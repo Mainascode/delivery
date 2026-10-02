@@ -1,6 +1,12 @@
 import { getFirebaseAdmin } from "../config/firebaseAdmin.js";
 import User from "../models/User.js";
 
+// Accounts allowed to use the Admin / Rider interface
+const ADMIN_EMAILS = [
+  "mainaemmanuel855@gmail.com",
+  "kimaningugihenry@gmail.com"
+];
+
 export async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization;
@@ -21,26 +27,33 @@ export async function requireAuth(req, res, next) {
       });
     }
 
+    // Verify Firebase login token
     const decoded = await firebase.auth().verifyIdToken(token);
+
+    const email = decoded.email?.toLowerCase();
+
+    // Check whether this Firebase account is one of our admin/rider accounts
+    const isAdmin = ADMIN_EMAILS.includes(email);
 
     let user = await User.findOne({
       firebaseUid: decoded.uid
     });
 
+    // Create MongoDB profile if it doesn't exist yet
     if (!user) {
-      const role =
-        decoded.email?.toLowerCase() ===
-        process.env.ADMIN_EMAIL?.toLowerCase()
-          ? "ADMIN"
-          : "CUSTOMER";
-
       user = await User.create({
         firebaseUid: decoded.uid,
         name: decoded.name || "User",
         email: decoded.email || "",
         phone: decoded.phone_number || "",
-        role
+        role: isAdmin ? "ADMIN" : "CUSTOMER"
       });
+    }
+
+    // Upgrade an existing account to ADMIN if it is one of the approved emails
+    if (isAdmin && user.role !== "ADMIN") {
+      user.role = "ADMIN";
+      await user.save();
     }
 
     req.firebaseUser = decoded;
@@ -65,3 +78,4 @@ export function requireAdmin(req, res, next) {
 
   next();
 }
+
