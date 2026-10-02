@@ -1,34 +1,43 @@
+import { useEffect } from "react";
 import {
   Navigate,
   NavLink,
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 
-import { useAuth } from "./context/AuthContext.jsx";
+import { useAuth } from "./context/AuthContext";
 
-import Home from "./Home.jsx";
-import Login from "./Login.jsx";
-import Register from "./Register.jsx";
-import Orders from "./Orders.jsx";
-import Request from "./Request.jsx";
-import Help from "./Help.jsx";
-import Settings from "./Settings.jsx";
+import Home from "./Home";
+import Help from "./Help";
+import Login from "./Login";
+import Register from "./Register";
+import Request from "./Request";
+import Orders from "./Orders";
+import Settings from "./Settings";
 
 import "./index.css";
 
 /* =========================================================
    LOADING
-========================================================= */
+   ========================================================= */
 
 function LoadingScreen() {
   return (
     <div className="loading-screen">
       <div className="loading-card">
-        <div className="loading-logo">N</div>
-        <h2>NITUME</h2>
-        <p>Loading your account...</p>
+        <div className="brand-mark">N</div>
+
+        <p className="eyebrow">NITUME</p>
+
+        <h1>Loading...</h1>
+
+        <p>
+          Getting your NITUME account ready.
+        </p>
+
         <div className="loading-spinner" />
       </div>
     </div>
@@ -36,416 +45,339 @@ function LoadingScreen() {
 }
 
 /* =========================================================
-   404
-========================================================= */
+   HOME ICON
+   ========================================================= */
 
-function NotFound() {
+function HomeIcon() {
   return (
-    <div className="not-found">
-      <div className="not-found-card">
-        <span className="not-found-code">404</span>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3 10.8L12 3l9 7.8"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
 
-        <h1>Page not found</h1>
+      <path
+        d="M5.5 9.5V21h13V9.5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
 
-        <p>
-          The page you're looking for doesn't exist.
-        </p>
-
-        <NavLink to="/" className="primary-button">
-          Go home
-        </NavLink>
-      </div>
-    </div>
+      <path
+        d="M9.5 21v-6h5v6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
 /* =========================================================
-   CUSTOMER NAVIGATION
-========================================================= */
+   AUTH GUARD
+   ========================================================= */
 
-const customerNavigation = [
-  {
-    path: "/",
-    label: "Home",
-    icon: "⌂",
-    end: true,
-  },
-  {
-    path: "/request",
-    label: "Request Rider",
-    icon: "＋",
-  },
-  {
-    path: "/orders",
-    label: "My Orders",
-    icon: "▣",
-  },
-  {
-    path: "/help",
-    label: "Help",
-    icon: "?",
-  },
-  {
-    path: "/settings",
-    label: "Settings",
-    icon: "⚙",
-  },
-];
+function ProtectedRoute({ children }) {
+  const { user, profile, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    );
+  }
+
+  /*
+   * Firebase user exists but MongoDB profile has not
+   * loaded yet. Let the page continue; AuthContext
+   * handles profile loading.
+   */
+  return children;
+}
 
 /* =========================================================
-   OPERATOR NAVIGATION
-========================================================= */
+   CUSTOMER TOP BAR
+   ========================================================= */
 
-const operatorNavigation = [
-  {
-    path: "/operator",
-    label: "Dashboard",
-    icon: "⌂",
-    end: true,
-  },
-  {
-    path: "/operator/orders",
-    label: "Incoming Orders",
-    icon: "▣",
-  },
-  {
-    path: "/operator/pricing",
-    label: "Pricing",
-    icon: "◆",
-  },
-  {
-    path: "/operator/settings",
-    label: "Settings",
-    icon: "⚙",
-  },
-];
+function CustomerTopBar() {
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
 
-/* =========================================================
-   NAVIGATION LINK
-========================================================= */
-
-function NavigationLink({ item }) {
   return (
-    <NavLink
-      to={item.path}
-      end={item.end}
-      className={({ isActive }) =>
-        `navigation-link ${isActive ? "active" : ""}`
-      }
-    >
-      <span className="navigation-icon">
-        {item.icon}
-      </span>
+    <header className="mobile-topbar">
+      <button
+        type="button"
+        className="home-icon-button"
+        onClick={() => navigate("/")}
+        aria-label="Go to home"
+        title="Home"
+      >
+        <HomeIcon />
+      </button>
 
-      <span>{item.label}</span>
-    </NavLink>
+      <NavLink to="/" className="topbar-brand">
+        <span className="topbar-brand-mark">N</span>
+
+        <span>
+          <strong>NITUME</strong>
+          <small>Ruaka · Gathigi Estate</small>
+        </span>
+      </NavLink>
+
+      {!user ? (
+        <NavLink
+          to="/login"
+          className="topbar-login"
+        >
+          Sign in
+        </NavLink>
+      ) : (
+        <span className="topbar-user">
+          {profile?.name?.split(" ")[0] ||
+            user.displayName?.split(" ")[0] ||
+            "Account"}
+        </span>
+      )}
+    </header>
   );
 }
 
 /* =========================================================
    CUSTOMER SIDEBAR
-========================================================= */
+   ========================================================= */
 
-function CustomerSidebar({ profile }) {
-  const { logout } = useAuth();
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  }
-
-  const name =
-    profile?.name ||
-    profile?.displayName ||
-    profile?.email?.split("@")[0] ||
-    "Customer";
+function CustomerSidebar() {
+  const { user, profile } = useAuth();
 
   return (
-    <aside className="desktop-sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-mark">N</div>
+    <aside className="sidebar">
+      <div className="sidebar-top">
+        <NavLink to="/" className="brand">
+          <div className="brand-mark">N</div>
 
-        <div>
-          <strong>NITUME</strong>
-          <span>Local delivery</span>
-        </div>
-      </div>
-
-      <div className="sidebar-section">
-        <span className="sidebar-section-title">
-          MENU
-        </span>
-
-        <nav className="sidebar-navigation">
-          {customerNavigation.map((item) => (
-            <NavigationLink
-              key={item.path}
-              item={item}
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="sidebar-bottom">
-        <div className="sidebar-user">
-          <div className="user-avatar">
-            {name.charAt(0).toUpperCase()}
+          <div>
+            <strong>NITUME</strong>
+            <span>Ruaka · Gathigi Estate</span>
           </div>
+        </NavLink>
 
-          <div className="sidebar-user-info">
-            <strong>{name}</strong>
-            <span>Customer</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="sidebar-logout"
-          onClick={handleLogout}
-        >
-          <span>↪</span>
-          Sign out
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-/* =========================================================
-   OPERATOR SIDEBAR
-========================================================= */
-
-function OperatorSidebar({ profile }) {
-  const { logout } = useAuth();
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  }
-
-  const name =
-    profile?.name ||
-    profile?.displayName ||
-    profile?.email?.split("@")[0] ||
-    "Operator";
-
-  return (
-    <aside className="desktop-sidebar operator-sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-mark">N</div>
-
-        <div>
-          <strong>NITUME</strong>
-          <span>Operator</span>
-        </div>
-      </div>
-
-      <div className="operator-badge">
-        <span className="operator-badge-dot" />
-        Operator mode
-      </div>
-
-      <div className="sidebar-section">
-        <span className="sidebar-section-title">
-          OPERATIONS
-        </span>
-
-        <nav className="sidebar-navigation">
-          {operatorNavigation.map((item) => (
-            <NavigationLink
-              key={item.path}
-              item={item}
-            />
-          ))}
-        </nav>
-      </div>
-
-      <div className="sidebar-bottom">
-        <div className="sidebar-user">
-          <div className="user-avatar">
-            {name.charAt(0).toUpperCase()}
-          </div>
-
-          <div className="sidebar-user-info">
-            <strong>{name}</strong>
-            <span>Administrator</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="sidebar-logout"
-          onClick={handleLogout}
-        >
-          <span>↪</span>
-          Sign out
-        </button>
-      </div>
-    </aside>
-  );
-}
-
-/* =========================================================
-   MOBILE BOTTOM NAVIGATION
-========================================================= */
-
-function MobileBottomNavigation({
-  operator = false,
-}) {
-  const navigation = operator
-    ? operatorNavigation
-    : customerNavigation.filter((item) =>
-        [
-          "/",
-          "/orders",
-          "/request",
-          "/settings",
-        ].includes(item.path)
-      );
-
-  return (
-    <nav className="mobile-bottom-nav">
-      {navigation.map((item) => (
-        <NavLink
-          key={item.path}
-          to={item.path}
-          end={item.end}
-          className={({ isActive }) =>
-            `mobile-nav-link ${
+        <nav className="side-nav">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
               isActive ? "active" : ""
-            }`
+            }
+          >
+            <HomeIcon />
+            <span>Home</span>
+          </NavLink>
+
+          <NavLink
+            to="/request"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span className="nav-symbol">＋</span>
+            <span>Request delivery</span>
+          </NavLink>
+
+          <NavLink
+            to="/orders"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span className="nav-symbol">▣</span>
+            <span>My orders</span>
+          </NavLink>
+
+          <NavLink
+            to="/details"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span className="nav-symbol">◉</span>
+            <span>Your details</span>
+          </NavLink>
+
+          <NavLink
+            to="/help"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span className="nav-symbol">?</span>
+            <span>Help</span>
+          </NavLink>
+
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span className="nav-symbol">⚙</span>
+            <span>Settings</span>
+          </NavLink>
+        </nav>
+      </div>
+
+      <div className="sidebar-bottom">
+        {user ? (
+          <div className="sidebar-account">
+            <span className="status-dot" />
+
+            <div>
+              <strong>
+                {profile?.name ||
+                  user.displayName ||
+                  "NITUME customer"}
+              </strong>
+
+              <span>
+                {profile?.phone ||
+                  user.email ||
+                  ""}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <NavLink
+            to="/login"
+            className="sidebar-signin"
+          >
+            Sign in
+          </NavLink>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+/* =========================================================
+   MOBILE NAVIGATION
+   ========================================================= */
+
+function CustomerMobileNav() {
+  const { user } = useAuth();
+
+  return (
+    <nav className="mobile-nav">
+      <NavLink
+        to="/"
+        end
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <HomeIcon />
+        <span>Home</span>
+      </NavLink>
+
+      <NavLink
+        to="/request"
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span className="mobile-nav-icon">＋</span>
+        <span>Request</span>
+      </NavLink>
+
+      {user ? (
+        <NavLink
+          to="/orders"
+          className={({ isActive }) =>
+            isActive ? "active" : ""
           }
         >
-          <span className="mobile-nav-icon">
-            {item.icon}
-          </span>
-
-          <span>{item.label}</span>
+          <span className="mobile-nav-icon">▣</span>
+          <span>Orders</span>
         </NavLink>
-      ))}
+      ) : (
+        <NavLink
+          to="/login"
+          className={({ isActive }) =>
+            isActive ? "active" : ""
+          }
+        >
+          <span className="mobile-nav-icon">→</span>
+          <span>Sign in</span>
+        </NavLink>
+      )}
+
+      <NavLink
+        to="/settings"
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span className="mobile-nav-icon">⚙</span>
+        <span>Settings</span>
+      </NavLink>
     </nav>
   );
 }
 
 /* =========================================================
-   CUSTOMER HEADER
-========================================================= */
+   CUSTOMER LAYOUT
+   ========================================================= */
 
-function CustomerHeader({ profile }) {
+function CustomerLayout() {
   const location = useLocation();
 
-  const titles = {
-    "/": "Home",
-    "/orders": "My Orders",
-    "/request": "Request a Rider",
-    "/help": "Help & Coverage",
-    "/settings": "Settings",
-  };
+  /*
+   * Authentication pages should not have the customer
+   * sidebar/layout.
+   */
+  const authPage =
+    location.pathname === "/login" ||
+    location.pathname === "/signup";
 
-  const title =
-    titles[location.pathname] || "NITUME";
+  if (authPage) {
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Register />} />
+      </Routes>
+    );
+  }
 
-  const name =
-    profile?.name ||
-    profile?.displayName ||
-    profile?.email?.split("@")[0] ||
-    "Customer";
-
-  return (
-    <header className="mobile-top-header">
-      <div>
-        <span className="mobile-header-eyebrow">
-          NITUME
-        </span>
-
-        <h1>{title}</h1>
-      </div>
-
-      <div className="mobile-header-avatar">
-        {name.charAt(0).toUpperCase()}
-      </div>
-    </header>
-  );
-}
-
-/* =========================================================
-   OPERATOR HEADER
-========================================================= */
-
-function OperatorHeader({ profile }) {
-  const location = useLocation();
-
-  const titles = {
-    "/operator": "Dashboard",
-    "/operator/orders": "Incoming Orders",
-    "/operator/pricing": "Pricing",
-    "/operator/settings": "Settings",
-  };
-
-  const title =
-    titles[location.pathname] || "Operator";
-
-  const name =
-    profile?.name ||
-    profile?.displayName ||
-    profile?.email?.split("@")[0] ||
-    "Operator";
-
-  return (
-    <header className="mobile-top-header operator-mobile-header">
-      <div>
-        <span className="mobile-header-eyebrow">
-          NITUME OPERATOR
-        </span>
-
-        <h1>{title}</h1>
-      </div>
-
-      <div className="mobile-header-avatar">
-        {name.charAt(0).toUpperCase()}
-      </div>
-    </header>
-  );
-}
-
-/* =========================================================
-   CUSTOMER AUTHENTICATED LAYOUT
-========================================================= */
-
-function CustomerLayout({ profile }) {
   return (
     <div className="app-shell">
-      <CustomerSidebar profile={profile} />
+      <CustomerSidebar />
 
-      <div className="app-main">
-        <CustomerHeader profile={profile} />
+      <div className="app-content">
+        <CustomerTopBar />
 
-        <main className="page-content">
+        <main className="main-content">
           <Routes>
             <Route
-              path="/request"
-              element={<Request />}
-            />
-
-            <Route
-              path="/orders"
-              element={<Orders />}
-            />
-
-            <Route
-              path="/orders/:id"
-              element={<OrderDetailsFallback />}
-            />
-
-            <Route
-              path="/settings"
-              element={<Settings />}
+              path="/"
+              element={<Home />}
             />
 
             <Route
@@ -454,8 +386,39 @@ function CustomerLayout({ profile }) {
             />
 
             <Route
+              path="/request"
+              element={
+                <ProtectedRoute>
+                  <Request />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <Orders />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
               path="/details"
-              element={<DetailsFallback />}
+              element={
+                <ProtectedRoute>
+                  <DetailsPage />
+                </ProtectedRoute>
+              }
             />
 
             <Route
@@ -466,384 +429,134 @@ function CustomerLayout({ profile }) {
         </main>
       </div>
 
-      <MobileBottomNavigation />
+      <CustomerMobileNav />
     </div>
   );
 }
 
 /* =========================================================
-   OPERATOR LAYOUT
-========================================================= */
+   DETAILS
+   ========================================================= */
 
-function OperatorLayout({ profile }) {
+function DetailsPage() {
+  const { profile, user } = useAuth();
+
   return (
-    <div className="app-shell operator-shell">
-      <OperatorSidebar profile={profile} />
-
-      <div className="app-main">
-        <OperatorHeader profile={profile} />
-
-        <main className="page-content">
-          <Routes>
-            <Route
-              path="/operator"
-              element={<OperatorDashboard />}
-            />
-
-            <Route
-              path="/operator/orders"
-              element={<OperatorOrders />}
-            />
-
-            <Route
-              path="/operator/orders/:id"
-              element={<OperatorOrderDetails />}
-            />
-
-            <Route
-              path="/operator/pricing"
-              element={<OperatorPricing />}
-            />
-
-            <Route
-              path="/operator/settings"
-              element={<OperatorSettings />}
-            />
-
-            <Route
-              path="*"
-              element={<NotFound />}
-            />
-          </Routes>
-        </main>
+    <div className="page">
+      <div className="page-toolbar">
+        <button
+          type="button"
+          className="home-button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
+        >
+          <HomeIcon />
+          <span>Home</span>
+        </button>
       </div>
 
-      <MobileBottomNavigation operator />
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">ACCOUNT</p>
+
+          <h1>Your details</h1>
+
+          <p className="page-description">
+            Your NITUME account information.
+          </p>
+        </div>
+      </header>
+
+      <div className="details-grid">
+        <article className="detail-card">
+          <span>Name</span>
+          <strong>
+            {profile?.name ||
+              user?.displayName ||
+              "Not provided"}
+          </strong>
+        </article>
+
+        <article className="detail-card">
+          <span>Email</span>
+          <strong>
+            {profile?.email ||
+              user?.email ||
+              "Not provided"}
+          </strong>
+        </article>
+
+        <article className="detail-card">
+          <span>Phone</span>
+          <strong>
+            {profile?.phone ||
+              user?.phoneNumber ||
+              "Not provided"}
+          </strong>
+        </article>
+
+        <article className="detail-card">
+          <span>Account type</span>
+          <strong>
+            {profile?.role || "CUSTOMER"}
+          </strong>
+        </article>
+      </div>
     </div>
   );
 }
 
 /* =========================================================
-   FALLBACK PAGES
-========================================================= */
+   404
+   ========================================================= */
 
-function OrderDetailsFallback() {
-  const location = useLocation();
-
-  const id = location.pathname
-    .split("/")
-    .filter(Boolean)
-    .pop();
+function NotFound() {
+  const navigate = useNavigate();
 
   return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">ORDER</span>
+    <div className="page">
+      <div className="empty-card not-found-card">
+        <div className="not-found-number">
+          404
+        </div>
 
-        <h2>Order details</h2>
+        <p className="eyebrow">
+          PAGE NOT FOUND
+        </p>
+
+        <h1>This page isn't available.</h1>
+
+        <p>
+          The page may have moved or the address may
+          be incorrect.
+        </p>
+
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => navigate("/")}
+        >
+          <HomeIcon />
+          Go home
+        </button>
       </div>
-
-      <p>
-        Order <strong>#{id}</strong> details will
-        appear here.
-      </p>
-
-      <NavLink
-        to="/orders"
-        className="primary-button"
-      >
-        Back to orders
-      </NavLink>
     </div>
-  );
-}
-
-function DetailsFallback() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">ACCOUNT</span>
-
-        <h2>Your details</h2>
-      </div>
-
-      <p>
-        Your account details page is ready to be
-        connected.
-      </p>
-
-      <NavLink
-        to="/settings"
-        className="primary-button"
-      >
-        Go to settings
-      </NavLink>
-    </div>
-  );
-}
-
-function OperatorDashboard() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">OPERATOR</span>
-
-        <h2>Dashboard</h2>
-      </div>
-
-      <p>
-        Operator dashboard is ready to be connected
-        to the backend.
-      </p>
-    </div>
-  );
-}
-
-function OperatorOrders() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">ORDERS</span>
-
-        <h2>Incoming orders</h2>
-      </div>
-
-      <p>Incoming orders will appear here.</p>
-    </div>
-  );
-}
-
-function OperatorOrderDetails() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">ORDER</span>
-
-        <h2>Order details</h2>
-      </div>
-
-      <p>
-        Operator order details will appear here.
-      </p>
-    </div>
-  );
-}
-
-function OperatorPricing() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">PRICING</span>
-
-        <h2>Delivery pricing</h2>
-      </div>
-
-      <p>
-        Pricing management will appear here.
-      </p>
-    </div>
-  );
-}
-
-function OperatorSettings() {
-  return (
-    <div className="page-card">
-      <div className="page-card-header">
-        <span className="eyebrow">SETTINGS</span>
-
-        <h2>Operator settings</h2>
-      </div>
-
-      <p>
-        Operator settings will appear here.
-      </p>
-    </div>
-  );
-}
-
-/* =========================================================
-   PROTECTED CUSTOMER ROUTE
-========================================================= */
-
-function ProtectedCustomerRoute({ children }) {
-  const { user, loading } = useAuth();
-  const location = useLocation();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{
-          from: location.pathname,
-        }}
-      />
-    );
-  }
-
-  return children;
-}
-
-/* =========================================================
-   PROTECTED OPERATOR ROUTE
-========================================================= */
-
-function ProtectedOperatorRoute({ children }) {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-        state={{
-          from: "/operator",
-        }}
-      />
-    );
-  }
-
-  if (profile?.role !== "ADMIN") {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-}
-
-/* =========================================================
-   MAIN APPLICATION
-========================================================= */
-
-function AuthenticatedApp() {
-  const { user, profile, loading } = useAuth();
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  return (
-    <Routes>
-      {/* ================================================
-          PUBLIC HOME
-      ================================================= */}
-
-      <Route
-        path="/"
-        element={<Home />}
-      />
-
-      {/* ================================================
-          PUBLIC HELP
-      ================================================= */}
-
-      <Route
-        path="/help"
-        element={<Help />}
-      />
-
-      {/* ================================================
-          AUTHENTICATION
-      ================================================= */}
-
-      <Route
-        path="/login"
-        element={
-          user ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Login />
-          )
-        }
-      />
-
-      <Route
-        path="/signup"
-        element={
-          user ? (
-            <Navigate to="/" replace />
-          ) : (
-            <Register />
-          )
-        }
-      />
-
-      {/* ================================================
-          PROTECTED CUSTOMER AREA
-      ================================================= */}
-
-      <Route
-        path="/request"
-        element={
-          <ProtectedCustomerRoute>
-            <CustomerLayout profile={profile} />
-          </ProtectedCustomerRoute>
-        }
-      />
-
-      <Route
-        path="/orders/*"
-        element={
-          <ProtectedCustomerRoute>
-            <CustomerLayout profile={profile} />
-          </ProtectedCustomerRoute>
-        }
-      />
-
-      <Route
-        path="/settings"
-        element={
-          <ProtectedCustomerRoute>
-            <CustomerLayout profile={profile} />
-          </ProtectedCustomerRoute>
-        }
-      />
-
-      <Route
-        path="/details"
-        element={
-          <ProtectedCustomerRoute>
-            <CustomerLayout profile={profile} />
-          </ProtectedCustomerRoute>
-        }
-      />
-
-      {/* ================================================
-          PROTECTED OPERATOR AREA
-      ================================================= */}
-
-      <Route
-        path="/operator/*"
-        element={
-          <ProtectedOperatorRoute>
-            <OperatorLayout profile={profile} />
-          </ProtectedOperatorRoute>
-        }
-      />
-
-      {/* ================================================
-          EVERYTHING ELSE
-      ================================================= */}
-
-      <Route
-        path="*"
-        element={<NotFound />}
-      />
-    </Routes>
   );
 }
 
 /* =========================================================
    APP
-========================================================= */
+   ========================================================= */
 
 export default function NitumeApp() {
-  return <AuthenticatedApp />;
+  return (
+    <Routes>
+      <Route
+        path="/*"
+        element={<CustomerLayout />}
+      />
+    </Routes>
+  );
 }
+

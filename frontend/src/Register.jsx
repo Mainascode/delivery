@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -40,18 +41,22 @@ export default function Register({ onLogin }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [message, setMessage] = useState("");
 
-  async function handleRegister(event) {
+  async function register(event) {
     event.preventDefault();
 
     setError("");
-    setSuccess("");
+    setMessage("");
+
+    const cleanName = name.trim();
+    const cleanPhone = phone.trim();
+    const cleanEmail = email.trim().toLowerCase();
 
     if (
-      !name.trim() ||
-      !phone.trim() ||
-      !email.trim() ||
+      !cleanName ||
+      !cleanPhone ||
+      !cleanEmail ||
       !password ||
       !confirmPassword
     ) {
@@ -60,7 +65,7 @@ export default function Register({ onLogin }) {
     }
 
     if (password.length < 6) {
-      setError("Your password must be at least 6 characters.");
+      setError("Password must be at least 6 characters.");
       return;
     }
 
@@ -73,66 +78,81 @@ export default function Register({ onLogin }) {
       setLoading(true);
 
       /*
-       * Create the Firebase account.
+       * 1. Create the account in Firebase Authentication.
        */
       const credential = await createUserWithEmailAndPassword(
         auth,
-        email.trim(),
+        cleanEmail,
         password
       );
 
+      const firebaseUser = credential.user;
+
       /*
-       * Store the user's name in Firebase.
+       * 2. Save the customer's name in Firebase.
        */
-      await updateProfile(credential.user, {
-        displayName: name.trim(),
+      await updateProfile(firebaseUser, {
+        displayName: cleanName,
       });
 
       /*
-       * Store the application profile in MongoDB/backend.
+       * 3. Get the Firebase ID token.
        */
-      await api("/api/auth/profile", {
+      const idToken = await firebaseUser.getIdToken(true);
+
+      /*
+       * 4. Send the authenticated customer to the backend.
+       *
+       * The backend verifies the Firebase token through
+       * requireAuth and creates the MongoDB User record
+       * automatically if it does not exist yet.
+       */
+      const result = await api("/api/auth/profile", {
         method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({
-          name: name.trim(),
-          phone: phone.trim(),
+          name: cleanName,
+          phone: cleanPhone,
         }),
       });
 
-      setSuccess("Account created successfully.");
+      console.log("Registration successful:", result);
+
+      setMessage("Account created successfully.");
 
       /*
-       * Firebase is already authenticated at this point.
-       * Give AuthContext a moment to detect the new user,
-       * then return to the customer home page.
+       * Firebase has already authenticated the user.
        */
       if (onLogin) {
         onLogin("CUSTOMER");
       } else {
-        navigate("/");
+        navigate("/", { replace: true });
       }
     } catch (err) {
       console.error("Registration error:", err);
 
-      let message = "Unable to create your account.";
+      let errorMessage = "Unable to create your account.";
 
       if (err.code === "auth/email-already-in-use") {
-        message = "An account with this email already exists.";
+        errorMessage =
+          "An account with this email already exists. Please sign in.";
       } else if (err.code === "auth/invalid-email") {
-        message = "Please enter a valid email address.";
+        errorMessage = "Please enter a valid email address.";
       } else if (err.code === "auth/weak-password") {
-        message = "Please choose a stronger password.";
-      } else if (err.code === "auth/configuration-not-found") {
-        message =
-          "Firebase Authentication is not configured correctly.";
+        errorMessage = "Please choose a stronger password.";
+      } else if (err.code === "auth/operation-not-allowed") {
+        errorMessage =
+          "Email and password sign-up is not enabled in Firebase.";
       } else if (err.code === "auth/network-request-failed") {
-        message =
+        errorMessage =
           "Network error. Check your internet connection and try again.";
       } else if (err.message) {
-        message = err.message;
+        errorMessage = err.message;
       }
 
-      setError(message);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -158,11 +178,11 @@ export default function Register({ onLogin }) {
         <div className="auth-heading">
           <div className="eyebrow">GET STARTED</div>
 
-          <h1>Let's get you started.</h1>
+          <h1>Need a hand?</h1>
 
           <p className="auth-subtitle">
-            Create your account once. After that, requesting shopping,
-            errands and deliveries will be much faster.
+            Create your NITUME account and start requesting shopping,
+            errands and deliveries around your area.
           </p>
         </div>
 
@@ -174,14 +194,14 @@ export default function Register({ onLogin }) {
         )}
 
         {/* SUCCESS */}
-        {success && (
+        {message && (
           <div className="alert alert-success">
-            {success}
+            {message}
           </div>
         )}
 
         {/* FORM */}
-        <form className="auth-form" onSubmit={handleRegister}>
+        <form className="auth-form" onSubmit={register}>
           <label className="field">
             <span>Full name</span>
 
@@ -229,7 +249,7 @@ export default function Register({ onLogin }) {
 
             <input
               type="password"
-              placeholder="At least 6 characters"
+              placeholder="Create a password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
@@ -270,10 +290,11 @@ export default function Register({ onLogin }) {
         </div>
 
         <div className="auth-note">
-          No OTP required. Your account is created using your email
-          and password.
+          By creating an account, you can request shopping, errands
+          and local delivery help through NITUME.
         </div>
       </div>
     </div>
   );
 }
+

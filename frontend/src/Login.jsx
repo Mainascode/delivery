@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "./services/firebase";
 
 async function api(path, options = {}) {
   const response = await fetch(path, {
@@ -14,94 +17,129 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.error || data.message || "Something went wrong.");
+    throw new Error(
+      data.error || data.message || "Something went wrong."
+    );
   }
 
   return data;
 }
 
-export default function Register({ onLogin }) {
+export default function Login({ onLogin }) {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
-  async function register(event) {
+  async function login(event) {
     event.preventDefault();
 
     setError("");
-    setMessage("");
 
-    const cleanName = name.trim();
-    const cleanPhone = phone.trim();
+    const cleanEmail = email.trim().toLowerCase();
 
-    if (!cleanName || !cleanPhone || !password || !confirmPassword) {
-      setError("Please fill in all fields.");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+    if (!cleanEmail || !password) {
+      setError("Please enter your email and password.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const result = await api("/api/auth/register", {
-        method: "POST",
-        body: JSON.stringify({
-          name: cleanName,
-          phone: cleanPhone,
-          password,
-          confirmPassword,
-        }),
-      });
+      /*
+       * 1. Sign in with Firebase
+       */
+      const credential = await signInWithEmailAndPassword(
+        auth,
+        cleanEmail,
+        password
+      );
+
+      const firebaseUser = credential.user;
 
       /*
-       * If the backend logs the customer in immediately,
-       * use the returned role and go straight to the app.
+       * 2. Get Firebase ID token
        */
-      if (result.authenticated && result.user) {
-        if (onLogin) {
-          onLogin(result.user.role);
-        } else {
-          navigate("/");
-        }
+      const idToken = await firebaseUser.getIdToken(true);
 
+      /*
+       * 3. Ask the backend for the user's profile.
+       *
+       * The backend's requireAuth middleware verifies
+       * the Firebase token and creates the MongoDB user
+       * if one does not already exist.
+       */
+      const result = await api("/api/auth/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      const user = result.user;
+
+      console.log("Login successful:", user);
+
+      /*
+       * 4. Let the app know who logged in.
+       */
+      if (onLogin) {
+        onLogin(user.role);
+      }
+
+      /*
+       * 5. Return the user to the page they originally
+       * wanted to visit, if there was one.
+       */
+      const from = location.state?.from;
+
+      if (from?.pathname) {
+        navigate(
+          `${from.pathname}${from.search || ""}${from.hash || ""}`,
+          { replace: true }
+        );
         return;
       }
 
       /*
-       * If registration succeeds but the backend does not
-       * automatically authenticate, send the customer to login.
+       * Otherwise send them to the appropriate area.
        */
-      setMessage(
-        result.message ||
-          "Account created successfully. You can now sign in."
-      );
-
-      setName("");
-      setPhone("");
-      setPassword("");
-      setConfirmPassword("");
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 1200);
+      if (user.role === "ADMIN") {
+        navigate("/operator", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
-      setError(err.message || "Unable to create your account.");
+      console.error("Login error:", err);
+
+      let errorMessage = "Unable to sign in.";
+
+      if (
+        err.code === "auth/invalid-credential" ||
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/user-not-found"
+      ) {
+        errorMessage = "Incorrect email or password.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Please enter a valid email address.";
+      } else if (err.code === "auth/user-disabled") {
+        errorMessage =
+          "This account has been disabled. Please contact support.";
+      } else if (err.code === "auth/too-many-requests") {
+        errorMessage =
+          "Too many login attempts. Please wait a moment and try again.";
+      } else if (err.code === "auth/network-request-failed") {
+        errorMessage =
+          "Network error. Check your internet connection and try again.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -110,69 +148,46 @@ export default function Register({ onLogin }) {
   return (
     <div className="auth-shell">
       <div className="auth-card">
-        {/* BRAND */}
         <div className="auth-brand">
           <div className="brand-mark">N</div>
 
           <div>
             <div className="brand-name">NITUME</div>
-
             <div className="brand-location">
               RUAKA · GATHIGI ESTATE
             </div>
           </div>
         </div>
 
-        {/* HEADING */}
         <div className="auth-heading">
-          <div className="eyebrow">GET STARTED</div>
+          <div className="eyebrow">WELCOME BACK</div>
 
-          <h1>Need a hand?</h1>
+          <h1>Good to see you.</h1>
 
           <p className="auth-subtitle">
-            Create your NITUME account and start requesting shopping,
-            errands and deliveries around your area.
+            Sign in to request shopping, errands and local
+            delivery help around your area.
           </p>
         </div>
 
-        {/* ERROR */}
         {error && (
           <div className="alert alert-error">
             {error}
           </div>
         )}
 
-        {/* SUCCESS */}
-        {message && (
-          <div className="alert alert-success">
-            {message}
-          </div>
-        )}
-
-        {/* FORM */}
-        <form className="auth-form" onSubmit={register}>
+        <form className="auth-form" onSubmit={login}>
           <label className="field">
-            <span>Full name</span>
+            <span>Email</span>
 
             <input
-              type="text"
-              placeholder="Your full name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              autoComplete="name"
-              disabled={loading}
-            />
-          </label>
-
-          <label className="field">
-            <span>Phone number</span>
-
-            <input
-              type="tel"
-              placeholder="07XX XXX XXX"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              autoComplete="tel"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
               disabled={loading}
             />
           </label>
@@ -182,25 +197,10 @@ export default function Register({ onLogin }) {
 
             <input
               type="password"
-              placeholder="Create a password"
+              placeholder="Enter your password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              disabled={loading}
-            />
-          </label>
-
-          <label className="field">
-            <span>Confirm password</span>
-
-            <input
-              type="password"
-              placeholder="Enter your password again"
-              value={confirmPassword}
-              onChange={(event) =>
-                setConfirmPassword(event.target.value)
-              }
-              autoComplete="new-password"
+              autoComplete="current-password"
               disabled={loading}
             />
           </label>
@@ -210,21 +210,21 @@ export default function Register({ onLogin }) {
             className="btn btn-primary btn-block"
             disabled={loading}
           >
-            {loading ? "Creating account..." : "Create account"}
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
 
-        {/* LOGIN */}
         <div className="auth-note">
-          Already have an account?{" "}
-          <Link to="/login" className="text-link">
-            Sign in
+          Don't have an account?{" "}
+          <Link to="/signup" className="text-link">
+            Create one
           </Link>
         </div>
 
         <div className="auth-note">
-          By creating an account, you can request shopping, errands
-          and local delivery help through NITUME.
+          You can browse NITUME without an account.
+          An account is only needed when you want to request
+          a delivery.
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+
 import { auth } from "./firebase";
 
 const API_URL = "http://localhost:5000";
@@ -11,13 +12,13 @@ export async function api(path, options = {}) {
   };
 
   if (user) {
-    const token = await user.getIdToken();
-
+    const token = await user.getIdToken(true);
     headers.Authorization = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers,
   });
 
@@ -30,8 +31,13 @@ export async function api(path, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data.error || "Something went wrong");
+    throw new Error(
+      data.error ||
+        data.message ||
+        `Request failed with status ${response.status}`
+    );
   }
 
   return data;
 }
+

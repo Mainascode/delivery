@@ -67,7 +67,14 @@ app.patch("/api/auth/profile", requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      user: req.user,
+      user: {
+        id: req.user._id,
+        firebaseUid: req.user.firebaseUid,
+        name: req.user.name,
+        email: req.user.email,
+        phone: req.user.phone,
+        role: req.user.role,
+      },
     });
   } catch (error) {
     console.error("Profile update error:", error);
@@ -77,6 +84,8 @@ app.patch("/api/auth/profile", requireAuth, async (req, res) => {
     });
   }
 });
+
+
 
 /* =========================
    PRICING

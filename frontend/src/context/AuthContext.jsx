@@ -48,9 +48,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
     const unsubscribe = onAuthStateChanged(
       auth,
       async (firebaseUser) => {
+        if (!mounted) return;
+
         setUser(firebaseUser);
 
         if (firebaseUser) {
@@ -59,11 +63,16 @@ export function AuthProvider({ children }) {
           setProfile(null);
         }
 
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     );
 
-    return unsubscribe;
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
   }, [loadProfile]);
 
   async function logout() {
@@ -76,12 +85,14 @@ export function AuthProvider({ children }) {
   }
 
   async function refreshProfile() {
-    if (!auth.currentUser) {
+    const firebaseUser = auth.currentUser;
+
+    if (!firebaseUser) {
       setProfile(null);
       return null;
     }
 
-    return loadProfile(auth.currentUser);
+    return loadProfile(firebaseUser);
   }
 
   return (
@@ -102,3 +113,4 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
+
