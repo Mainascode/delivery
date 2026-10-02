@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../../services/api";
+import { api } from "../services/api";
 
 const statuses = [
+  "PENDING",
   "ACCEPTED",
   "SHOPPING",
   "OUT_FOR_DELIVERY",
@@ -11,37 +12,51 @@ const statuses = [
 ];
 
 function formatStatus(status) {
-  return status
-    ?.replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return (
+    status
+      ?.replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/\b\w/g, (letter) => letter.toUpperCase()) ||
+    "Unknown"
+  );
 }
 
 function getStatusClass(status) {
   switch (status) {
+    case "PENDING":
+      return "pending";
     case "COMPLETED":
-      return "status-success";
+      return "completed";
     case "CANCELLED":
-      return "status-danger";
+      return "cancelled";
     case "ACCEPTED":
     case "SHOPPING":
     case "OUT_FOR_DELIVERY":
-      return "status-active";
+      return "active";
     default:
       return "";
   }
 }
 
-export default function AdminOrdersScreen() {
+function formatDate(value) {
+  if (!value) return "Unknown date";
+
+  return new Date(value).toLocaleString("en-KE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+export default function AdminOrders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [updatingId, setUpdatingId] = useState(null);
 
-  const load = useCallback(async (isRefresh = false) => {
+  const loadOrders = useCallback(async (refresh = false) => {
     try {
-      if (isRefresh) {
+      if (refresh) {
         setRefreshing(true);
       } else {
         setLoading(true);
@@ -61,8 +76,8 @@ export default function AdminOrdersScreen() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadOrders();
+  }, [loadOrders]);
 
   async function updateStatus(id, status) {
     try {
@@ -74,7 +89,7 @@ export default function AdminOrdersScreen() {
         body: JSON.stringify({ status }),
       });
 
-      await load(true);
+      await loadOrders(true);
     } catch (err) {
       console.error("Failed to update order:", err);
       setError(err.message || "Unable to update order status.");
@@ -85,11 +100,11 @@ export default function AdminOrdersScreen() {
 
   return (
     <div className="page operator-orders-page">
-      <div className="page-header">
+      <div className="admin-page-heading">
         <div>
-          <div className="eyebrow">NITUME / OPERATOR</div>
+          <span className="eyebrow">NITUME / OPERATOR</span>
           <h1>Orders</h1>
-          <p className="page-description">
+          <p>
             Review customer requests and move each delivery through its
             current stage.
           </p>
@@ -98,35 +113,30 @@ export default function AdminOrdersScreen() {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => load(true)}
+          onClick={() => loadOrders(true)}
           disabled={refreshing}
         >
-          {refreshing ? "Refreshing..." : "Refresh"}
+          {refreshing ? "Refreshing..." : "↻ Refresh"}
         </button>
       </div>
 
       {error && (
-        <div className="alert alert-error">
+        <div className="admin-alert admin-alert-error">
           <span>{error}</span>
-
-          <button
-            type="button"
-            className="alert-action"
-            onClick={() => load()}
-          >
+          <button type="button" onClick={() => loadOrders()}>
             Try again
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="loading-card">
+        <div className="admin-loading">
           <div className="spinner" />
           <p>Loading orders...</p>
         </div>
       ) : orders.length === 0 ? (
-        <div className="empty-card">
-          <div className="empty-icon">📦</div>
+        <div className="admin-empty">
+          <div>📦</div>
           <h2>No orders yet</h2>
           <p>
             Customer requests will appear here when they are submitted.
@@ -140,19 +150,19 @@ export default function AdminOrdersScreen() {
               ? id.slice(-6).toUpperCase()
               : "UNKNOWN";
 
-            const isUpdatingThisOrder = updatingId?.startsWith(`${id}-`);
+            const customer = order.customer;
 
             return (
               <article className="admin-order-card" key={id}>
-                <div className="admin-order-header">
+                <div className="admin-order-top">
                   <div>
-                    <span className="eyebrow">ORDER</span>
-
+                    <span className="order-label">ORDER</span>
                     <h2>#{shortId}</h2>
+                    <small>{formatDate(order.createdAt)}</small>
                   </div>
 
                   <span
-                    className={`status-badge ${getStatusClass(
+                    className={`admin-status ${getStatusClass(
                       order.status
                     )}`}
                   >
@@ -160,16 +170,32 @@ export default function AdminOrdersScreen() {
                   </span>
                 </div>
 
-                <div className="admin-order-content">
-                  <div className="admin-order-section">
-                    <span className="order-meta-label">ITEMS</span>
+                <div className="admin-customer">
+                  <div className="customer-avatar">
+                    {(customer?.name || "C").charAt(0).toUpperCase()}
+                  </div>
+
+                  <div>
+                    <strong>
+                      {customer?.name || "Customer"}
+                    </strong>
+                    <span>
+                      {customer?.email || "No email provided"}
+                    </span>
+                    {customer?.phone && (
+                      <span>{customer.phone}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="admin-order-info-grid">
+                  <div>
+                    <span>ITEMS</span>
                     <p>{order.items || "No items provided"}</p>
                   </div>
 
-                  <div className="admin-order-section">
-                    <span className="order-meta-label">
-                      DELIVERY LOCATION
-                    </span>
+                  <div>
+                    <span>DELIVERY LOCATION</span>
                     <p>
                       {order.deliveryLocation ||
                         "No delivery location provided"}
@@ -177,30 +203,35 @@ export default function AdminOrdersScreen() {
                   </div>
 
                   {order.pickupLocation && (
-                    <div className="admin-order-section">
-                      <span className="order-meta-label">
-                        PICKUP LOCATION
-                      </span>
+                    <div>
+                      <span>PICKUP / SHOP</span>
                       <p>{order.pickupLocation}</p>
                     </div>
                   )}
 
-                  {order.notes && (
-                    <div className="admin-order-section">
-                      <span className="order-meta-label">NOTES</span>
-                      <p>{order.notes}</p>
-                    </div>
-                  )}
+                  <div>
+                    <span>DELIVERY FEE</span>
+                    <p>
+                      {order.deliveryFee != null
+                        ? `KES ${order.deliveryFee}`
+                        : "Not available"}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="admin-order-actions">
-                  <div className="admin-order-actions-heading">
-                    <span>Update status</span>
+                {order.notes && (
+                  <div className="admin-order-notes">
+                    <span>NOTES</span>
+                    <p>{order.notes}</p>
+                  </div>
+                )}
 
-                    {isUpdatingThisOrder && (
-                      <span className="updating-text">
-                        Updating...
-                      </span>
+                <div className="admin-order-actions">
+                  <div className="admin-order-actions-header">
+                    <strong>Update status</strong>
+
+                    {updatingId?.startsWith(`${id}-`) && (
+                      <span>Updating...</span>
                     )}
                   </div>
 
@@ -217,7 +248,9 @@ export default function AdminOrdersScreen() {
                           className={`status-action ${
                             isCurrent ? "selected" : ""
                           }`}
-                          disabled={isUpdatingThisOrder}
+                          disabled={
+                            updatingId?.startsWith(`${id}-`)
+                          }
                           onClick={() =>
                             updateStatus(id, status)
                           }
@@ -236,7 +269,7 @@ export default function AdminOrdersScreen() {
                     to={`/operator/orders/${id}`}
                     className="order-details-link"
                   >
-                    View order details →
+                    View full order →
                   </Link>
                 </div>
               </article>

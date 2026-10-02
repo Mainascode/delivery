@@ -1,35 +1,28 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
 import { auth } from "./services/firebase";
-
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(
-      data.error || data.message || "Something went wrong."
-    );
-  }
-
-  return data;
-}
+import { api } from "./services/api";
 
 export default function Request() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [items, setItems] = useState("");
-  const [pickup, setPickup] = useState("");
-  const [delivery, setDelivery] = useState("");
-  const [notes, setNotes] = useState("");
+  const [items, setItems] = useState(
+    location.state?.orderDraft?.items || ""
+  );
+
+  const [pickup, setPickup] = useState(
+    location.state?.orderDraft?.pickupLocation || ""
+  );
+
+  const [delivery, setDelivery] = useState(
+    location.state?.orderDraft?.deliveryLocation || ""
+  );
+
+  const [notes, setNotes] = useState(
+    location.state?.orderDraft?.notes || ""
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +84,12 @@ export default function Request() {
       setPickup("");
       setDelivery("");
       setNotes("");
+
+      /*
+       * Remove the previous order draft from navigation state
+       * after a successful request.
+       */
+      window.history.replaceState({}, document.title);
     } catch (err) {
       console.error("Request failed:", err);
 
@@ -137,7 +136,6 @@ export default function Request() {
 
   return (
     <div className="page request-page">
-      {/* HEADER */}
       <div className="page-header">
         <div>
           <div className="eyebrow">REQUEST A RIDER</div>
@@ -152,7 +150,6 @@ export default function Request() {
       </div>
 
       <div className="request-layout">
-        {/* FORM */}
         <form className="request-card" onSubmit={submit}>
           {error && (
             <div className="alert alert-error">
@@ -160,7 +157,6 @@ export default function Request() {
             </div>
           )}
 
-          {/* SHOPPING LIST */}
           <label className="field">
             <span>SHOPPING LIST</span>
 
@@ -177,7 +173,6 @@ Cooking oil`}
             />
           </label>
 
-          {/* PICKUP */}
           <label className="field">
             <span>PICKUP / SHOP</span>
 
@@ -190,7 +185,6 @@ Cooking oil`}
             />
           </label>
 
-          {/* DELIVERY */}
           <label className="field">
             <span>DELIVERY LOCATION</span>
 
@@ -203,7 +197,6 @@ Cooking oil`}
             />
           </label>
 
-          {/* NOTES */}
           <label className="field">
             <span>NOTES</span>
 
@@ -216,7 +209,6 @@ Cooking oil`}
             />
           </label>
 
-          {/* ACTIONS */}
           <div className="request-actions">
             <Link to="/" className="btn btn-secondary">
               Cancel
@@ -232,7 +224,6 @@ Cooking oil`}
           </div>
         </form>
 
-        {/* REQUEST SUMMARY */}
         <aside className="request-summary">
           <div className="eyebrow">BEFORE YOU SEND</div>
 

@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../../services/api";
+import { api } from "../services/api";
 
-export default function AdminDashboardScreen() {
+export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
-  const load = useCallback(async (isRefresh = false) => {
+  const loadDashboard = useCallback(async (refresh = false) => {
     try {
-      if (isRefresh) {
+      if (refresh) {
         setRefreshing(true);
       } else {
         setLoading(true);
@@ -30,22 +30,22 @@ export default function AdminDashboardScreen() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadDashboard();
+  }, [loadDashboard]);
 
   const incomingCount = dashboard?.incomingCount ?? 0;
   const activeCount = dashboard?.activeCount ?? 0;
   const fee = dashboard?.pricing?.fee;
-  const mode = dashboard?.pricing?.mode;
+  const mode = dashboard?.pricing?.mode || "NORMAL";
 
   return (
     <div className="page operator-dashboard-page">
-      <div className="page-header">
+      <div className="admin-page-heading">
         <div>
-          <div className="eyebrow">NITUME / OPERATOR</div>
+          <span className="eyebrow">NITUME / OPERATOR</span>
           <h1>Overview</h1>
-          <p className="page-description">
-            Keep an eye on incoming requests, active deliveries and today's
+          <p>
+            Monitor customer requests, active deliveries and current
             delivery pricing.
           </p>
         </div>
@@ -53,147 +53,188 @@ export default function AdminDashboardScreen() {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => load(true)}
+          onClick={() => loadDashboard(true)}
           disabled={refreshing}
         >
-          {refreshing ? "Refreshing..." : "Refresh"}
+          {refreshing ? "Refreshing..." : "↻ Refresh"}
         </button>
       </div>
 
       {error && (
-        <div className="alert alert-error">
+        <div className="admin-alert admin-alert-error">
           <span>{error}</span>
-
-          <button
-            type="button"
-            className="alert-action"
-            onClick={() => load()}
-          >
+          <button type="button" onClick={() => loadDashboard()}>
             Try again
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="loading-card">
+        <div className="admin-loading">
           <div className="spinner" />
           <p>Loading dashboard...</p>
         </div>
       ) : (
         <>
-          <section className="operator-stats">
-            <div className="stat-card">
-              <div className="stat-card-top">
-                <span className="stat-label">INCOMING</span>
-                <span className="stat-icon">↗</span>
+          <section className="admin-stat-grid">
+            <article className="admin-stat-card">
+              <div className="admin-stat-icon incoming">↗</div>
+
+              <div>
+                <span>INCOMING REQUESTS</span>
+                <strong>{incomingCount}</strong>
               </div>
 
-              <strong>{incomingCount}</strong>
+              <p>Customer requests waiting for action.</p>
 
-              <p>Requests waiting for action</p>
-
-              <Link to="/operator/orders" className="stat-link">
-                View incoming orders →
+              <Link to="/operator/orders">
+                Review incoming orders →
               </Link>
-            </div>
+            </article>
 
-            <div className="stat-card">
-              <div className="stat-card-top">
-                <span className="stat-label">ACTIVE</span>
-                <span className="stat-icon">●</span>
+            <article className="admin-stat-card">
+              <div className="admin-stat-icon active">●</div>
+
+              <div>
+                <span>ACTIVE DELIVERIES</span>
+                <strong>{activeCount}</strong>
               </div>
 
-              <strong>{activeCount}</strong>
+              <p>Orders currently being handled.</p>
 
-              <p>Deliveries currently in progress</p>
-
-              <Link to="/operator/orders" className="stat-link">
+              <Link to="/operator/orders">
                 View active orders →
               </Link>
-            </div>
+            </article>
+
+            <article className="admin-stat-card">
+              <div className="admin-stat-icon pricing">KES</div>
+
+              <div>
+                <span>CURRENT DELIVERY FEE</span>
+                <strong>
+                  {fee != null ? `KES ${fee}` : "--"}
+                </strong>
+              </div>
+
+              <p>
+                {mode === "RAIN"
+                  ? "Rain pricing is active."
+                  : "Normal pricing is active."}
+              </p>
+
+              <Link to="/operator/pricing">
+                Manage pricing →
+              </Link>
+            </article>
           </section>
 
-          <section className="operator-grid">
-            <div className="operator-card operator-pricing-card">
-              <div className="operator-card-header">
-                <div>
-                  <span className="eyebrow">CURRENT PRICING</span>
-                  <h2>Delivery fee</h2>
-                </div>
-
-                <Link to="/operator/pricing" className="card-link">
-                  Manage
-                </Link>
-              </div>
-
-              <div className="operator-price">
-                <span>KES</span>
-                <strong>{fee ?? "--"}</strong>
-              </div>
-
-              <div className="pricing-mode">
-                <span className="status-dot" />
-                <span>{mode || "Pricing mode unavailable"}</span>
-              </div>
-            </div>
-
-            <div className="operator-card">
-              <div className="operator-card-header">
+          <section className="admin-content-grid">
+            <article className="admin-panel">
+              <div className="admin-panel-heading">
                 <div>
                   <span className="eyebrow">QUICK ACTIONS</span>
                   <h2>Manage NITUME</h2>
                 </div>
               </div>
 
-              <div className="operator-actions">
-                <Link to="/operator/orders" className="operator-action">
+              <div className="admin-action-list">
+                <Link to="/operator/orders" className="admin-action">
+                  <span className="admin-action-icon">📦</span>
+
                   <span>
                     <strong>Orders</strong>
-                    <small>Review customer requests</small>
+                    <small>Review and update customer requests</small>
                   </span>
-                  <span>→</span>
+
+                  <b>→</b>
                 </Link>
 
-                <Link to="/operator/pricing" className="operator-action">
+                <Link to="/operator/pricing" className="admin-action">
+                  <span className="admin-action-icon">💰</span>
+
                   <span>
                     <strong>Pricing</strong>
-                    <small>Update delivery fees</small>
+                    <small>Manage normal and rain delivery fees</small>
                   </span>
-                  <span>→</span>
+
+                  <b>→</b>
                 </Link>
 
-                <Link to="/operator/settings" className="operator-action">
+                <Link to="/operator/settings" className="admin-action">
+                  <span className="admin-action-icon">⚙</span>
+
                   <span>
                     <strong>Settings</strong>
-                    <small>Manage operator settings</small>
+                    <small>Control requests and operating mode</small>
                   </span>
-                  <span>→</span>
+
+                  <b>→</b>
                 </Link>
               </div>
-            </div>
+            </article>
+
+            <article className="admin-panel admin-pricing-preview">
+              <div className="admin-panel-heading">
+                <div>
+                  <span className="eyebrow">CURRENT PRICING</span>
+                  <h2>Delivery fee</h2>
+                </div>
+
+                <span
+                  className={`admin-mode-badge ${
+                    mode === "RAIN" ? "rain" : "normal"
+                  }`}
+                >
+                  {mode}
+                </span>
+              </div>
+
+              <div className="admin-big-price">
+                <small>KES</small>
+                <strong>{fee ?? "--"}</strong>
+              </div>
+
+              <p>
+                This is the delivery fee currently returned by the
+                pricing service.
+              </p>
+
+              <Link
+                to="/operator/pricing"
+                className="btn btn-primary admin-full-button"
+              >
+                Manage pricing
+              </Link>
+            </article>
           </section>
 
-          <section className="operator-card operator-summary-card">
-            <div className="operator-card-header">
+          <section className="admin-panel admin-summary-panel">
+            <div className="admin-panel-heading">
               <div>
                 <span className="eyebrow">TODAY</span>
                 <h2>Operations summary</h2>
               </div>
             </div>
 
-            <div className="summary-grid">
+            <div className="admin-summary-grid">
               <div>
-                <span className="summary-label">Incoming requests</span>
+                <span>Incoming requests</span>
                 <strong>{incomingCount}</strong>
               </div>
 
               <div>
-                <span className="summary-label">Active deliveries</span>
+                <span>Active deliveries</span>
                 <strong>{activeCount}</strong>
               </div>
 
               <div>
-                <span className="summary-label">Current fee</span>
+                <span>Pricing mode</span>
+                <strong>{mode}</strong>
+              </div>
+
+              <div>
+                <span>Current fee</span>
                 <strong>
                   {fee != null ? `KES ${fee}` : "--"}
                 </strong>

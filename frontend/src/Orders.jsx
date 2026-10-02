@@ -1,24 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.error || data.message || "Something went wrong.");
-  }
-
-  return data;
-}
+import { api } from "./services/api";
 
 function formatStatus(status) {
   if (!status) return "Pending";
@@ -85,7 +68,10 @@ export default function Orders() {
       setOrders(data.orders || []);
     } catch (err) {
       console.error("Failed to load orders:", err);
-      setError(err.message || "Unable to load your orders.");
+
+      setError(
+        err.message || "Unable to load your orders."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -102,7 +88,9 @@ export default function Orders() {
         <div className="page-header">
           <div>
             <div className="eyebrow">YOUR ACTIVITY</div>
+
             <h1>My orders</h1>
+
             <p className="page-description">
               Loading your requests and deliveries...
             </p>
@@ -111,6 +99,7 @@ export default function Orders() {
 
         <div className="loading-card">
           <span className="spinner" />
+
           <span>Loading orders...</span>
         </div>
       </div>
@@ -119,7 +108,6 @@ export default function Orders() {
 
   return (
     <div className="page orders-page">
-      {/* HEADER */}
       <div className="page-header">
         <div>
           <div className="eyebrow">YOUR ACTIVITY</div>
@@ -127,7 +115,8 @@ export default function Orders() {
           <h1>My orders</h1>
 
           <p className="page-description">
-            View your requests, delivery locations and current order status.
+            View your requests, delivery locations and current
+            order status.
           </p>
         </div>
 
@@ -141,7 +130,6 @@ export default function Orders() {
         </button>
       </div>
 
-      {/* ERROR */}
       {error && (
         <div className="alert alert-error">
           <span>{error}</span>
@@ -156,7 +144,6 @@ export default function Orders() {
         </div>
       )}
 
-      {/* EMPTY */}
       {orders.length === 0 && !error ? (
         <div className="empty-card">
           <div className="empty-icon">+</div>
@@ -164,16 +151,18 @@ export default function Orders() {
           <h2>No orders yet</h2>
 
           <p>
-            Your requests will appear here once you create your first delivery
-            request.
+            Your requests will appear here once you create your
+            first delivery request.
           </p>
 
-          <Link to="/request" className="btn btn-primary">
+          <Link
+            to="/request"
+            className="btn btn-primary"
+          >
             Request a rider
           </Link>
         </div>
       ) : (
-        /* ORDERS */
         <div className="orders-list">
           {orders.map((order) => {
             const orderId = order._id || order.id;
@@ -192,7 +181,9 @@ export default function Orders() {
 
                     <div className="order-date">
                       {order.createdAt
-                        ? new Date(order.createdAt).toLocaleDateString(
+                        ? new Date(
+                            order.createdAt
+                          ).toLocaleDateString(
                             "en-KE",
                             {
                               day: "numeric",
@@ -204,7 +195,11 @@ export default function Orders() {
                     </div>
                   </div>
 
-                  <span className={getStatusClass(order.status)}>
+                  <span
+                    className={getStatusClass(
+                      order.status
+                    )}
+                  >
                     {formatStatus(order.status)}
                   </span>
                 </div>
@@ -216,7 +211,8 @@ export default function Orders() {
                     </span>
 
                     <strong>
-                      {order.deliveryLocation || "Not provided"}
+                      {order.deliveryLocation ||
+                        "Not provided"}
                     </strong>
                   </div>
 
@@ -226,15 +222,21 @@ export default function Orders() {
                         PICKUP / SHOP
                       </span>
 
-                      <strong>{order.pickupLocation}</strong>
+                      <strong>
+                        {order.pickupLocation}
+                      </strong>
                     </div>
                   )}
 
                   {order.items && (
                     <div>
-                      <span className="order-meta-label">ITEMS</span>
+                      <span className="order-meta-label">
+                        ITEMS
+                      </span>
 
-                      <strong>{order.items}</strong>
+                      <strong>
+                        {order.items}
+                      </strong>
                     </div>
                   )}
                 </div>

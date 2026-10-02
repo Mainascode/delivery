@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { api } from "../../services/api";
+import { api } from "../services/api";
 
-export default function AdminSettingsScreen() {
+export default function AdminSettings() {
   const [accepting, setAccepting] = useState(true);
   const [rain, setRain] = useState(false);
 
@@ -27,9 +27,7 @@ export default function AdminSettingsScreen() {
         );
       } catch (err) {
         console.error("Failed to load admin settings:", err);
-        setError(
-          err.message || "Unable to load settings."
-        );
+        setError(err.message || "Unable to load settings.");
       } finally {
         setLoading(false);
       }
@@ -59,14 +57,12 @@ export default function AdminSettingsScreen() {
 
       setSuccess("Settings updated successfully.");
 
-      setTimeout(() => {
+      window.setTimeout(() => {
         setSuccess("");
       }, 3000);
     } catch (err) {
       console.error("Failed to update settings:", err);
-      setError(
-        err.message || "Unable to update settings."
-      );
+      setError(err.message || "Unable to update settings.");
     } finally {
       setSaving("");
     }
@@ -101,16 +97,14 @@ export default function AdminSettingsScreen() {
   if (loading) {
     return (
       <div className="page">
-        <div className="page-header">
+        <div className="admin-page-heading">
           <div>
-            <div className="eyebrow">
-              NITUME / OPERATOR
-            </div>
+            <span className="eyebrow">NITUME / OPERATOR</span>
             <h1>Settings</h1>
           </div>
         </div>
 
-        <div className="loading-card">
+        <div className="admin-loading">
           <div className="spinner" />
           <p>Loading settings...</p>
         </div>
@@ -120,45 +114,38 @@ export default function AdminSettingsScreen() {
 
   return (
     <div className="page admin-settings-page">
-      <div className="page-header">
+      <div className="admin-page-heading">
         <div>
-          <div className="eyebrow">
-            NITUME / OPERATOR
-          </div>
-
+          <span className="eyebrow">NITUME / OPERATOR</span>
           <h1>Settings</h1>
-
-          <p className="page-description">
-            Control whether customers can place requests
-            and which delivery pricing mode is active.
+          <p>
+            Control customer requests and the weather pricing mode.
           </p>
         </div>
       </div>
 
       {error && (
-        <div className="alert alert-error">
+        <div className="admin-alert admin-alert-error">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="alert alert-success">
+        <div className="admin-alert admin-alert-success">
           {success}
         </div>
       )}
 
       <div className="admin-settings-list">
         <section className="admin-setting-card">
-          <div className="admin-setting-content">
-            <div className="admin-setting-icon">
-              ✓
-            </div>
+          <div className="admin-setting-left">
+            <div className="admin-setting-icon">✓</div>
 
             <div>
+              <span className="eyebrow">CUSTOMER ORDERS</span>
               <h2>Accept requests</h2>
-
               <p>
-                Allow customers to submit new delivery
+                Allow customers to submit new delivery and shopping
                 requests.
               </p>
             </div>
@@ -166,66 +153,63 @@ export default function AdminSettingsScreen() {
 
           <button
             type="button"
-            className={`toggle ${
-              accepting ? "toggle-on" : ""
+            className={`admin-toggle ${
+              accepting ? "on" : ""
             }`}
             role="switch"
             aria-checked={accepting}
             disabled={saving === "accepting"}
             onClick={handleAcceptingChange}
           >
-            <span className="toggle-knob" />
+            <span />
           </button>
         </section>
 
         <section className="admin-setting-card">
-          <div className="admin-setting-content">
-            <div className="admin-setting-icon">
-              ☔
-            </div>
+          <div className="admin-setting-left">
+            <div className="admin-setting-icon">☔</div>
 
             <div>
+              <span className="eyebrow">DELIVERY PRICING</span>
               <h2>Rain mode</h2>
-
               <p>
-                Apply rainy-weather delivery pricing to
-                customer requests.
+                Use the rainy-weather delivery fee when this mode is
+                active.
               </p>
             </div>
           </div>
 
           <button
             type="button"
-            className={`toggle ${
-              rain ? "toggle-on" : ""
-            }`}
+            className={`admin-toggle ${rain ? "on" : ""}`}
             role="switch"
             aria-checked={rain}
             disabled={saving === "rain"}
             onClick={handleRainChange}
           >
-            <span className="toggle-knob" />
+            <span />
           </button>
         </section>
 
-        <section className="admin-settings-info">
+        <section className="admin-settings-status">
           <div>
-            <span className="eyebrow">
-              CURRENT MODE
-            </span>
+            <span className="eyebrow">SERVICE STATUS</span>
+            <strong>
+              {accepting
+                ? "ACCEPTING CUSTOMER REQUESTS"
+                : "REQUESTS PAUSED"}
+            </strong>
+          </div>
 
+          <div>
+            <span className="eyebrow">PRICING MODE</span>
             <strong>
               {rain ? "RAIN PRICING" : "NORMAL PRICING"}
             </strong>
           </div>
-
-          <p>
-            {accepting
-              ? "Customers can currently submit new requests."
-              : "New customer requests are currently disabled."}
-          </p>
         </section>
       </div>
     </div>
   );
 }
+

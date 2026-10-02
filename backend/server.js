@@ -1,14 +1,13 @@
+import "dotenv/config";
+
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 
 import { requireAuth, requireAdmin } from "./middleware/auth.js";
 import { connectDB } from "./config/database.js";
 import Order from "./models/Order.js";
 import Settings from "./models/Settings.js";
 import { getCurrentPricing } from "./services/pricing.js";
-
-dotenv.config();
 
 await connectDB();
 
@@ -85,8 +84,6 @@ app.patch("/api/auth/profile", requireAuth, async (req, res) => {
   }
 });
 
-
-
 /* =========================
    PRICING
 ========================= */
@@ -152,10 +149,10 @@ app.post("/api/orders", requireAuth, async (req, res) => {
 
     const order = await Order.create({
       customer: req.user._id,
-      items,
-      pickupLocation,
-      deliveryLocation,
-      notes,
+      items: items.trim(),
+      pickupLocation: pickupLocation?.trim() || "",
+      deliveryLocation: deliveryLocation.trim(),
+      notes: notes?.trim() || "",
       deliveryFee: pricing.fee,
       pricingMode: pricing.mode,
       pricingRule: pricing.rule,
@@ -195,31 +192,6 @@ app.get("/api/orders", requireAuth, async (req, res) => {
   }
 });
 
-app.get("/api/orders/:id", requireAuth, async (req, res) => {
-  try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      customer: req.user._id,
-    });
-
-    if (!order) {
-      return res.status(404).json({
-        error: "Order not found",
-      });
-    }
-
-    res.json({
-      order,
-    });
-  } catch (error) {
-    console.error("Get order error:", error);
-
-    res.status(500).json({
-      error: "Failed to get order",
-    });
-  }
-});
-
 /* =========================
    ADMIN DASHBOARD
 ========================= */
@@ -255,6 +227,7 @@ app.get(
       );
 
       res.json({
+        success: true,
         incomingCount,
         activeCount,
         pricing,
@@ -272,6 +245,9 @@ app.get(
 
 /* =========================
    ADMIN ORDERS
+   IMPORTANT:
+   This route MUST come before
+   /api/orders/:id
 ========================= */
 
 app.get(
@@ -287,6 +263,7 @@ app.get(
         });
 
       res.json({
+        success: true,
         orders,
       });
     } catch (error) {
@@ -298,6 +275,10 @@ app.get(
     }
   }
 );
+
+/* =========================
+   ADMIN ORDER STATUS
+========================= */
 
 app.patch(
   "/api/orders/:id/status",
@@ -314,7 +295,9 @@ app.patch(
         "CANCELLED",
       ];
 
-      if (!allowedStatuses.includes(req.body.status)) {
+      const { status } = req.body;
+
+      if (!allowedStatuses.includes(status)) {
         return res.status(400).json({
           error: "Invalid order status",
         });
@@ -323,10 +306,11 @@ app.patch(
       const order = await Order.findByIdAndUpdate(
         req.params.id,
         {
-          status: req.body.status,
+          status,
         },
         {
           new: true,
+          runValidators: true,
         }
       );
 
@@ -396,6 +380,39 @@ app.patch(
     }
   }
 );
+
+/* =========================
+   CUSTOMER ORDER DETAILS
+   IMPORTANT:
+   This dynamic route MUST come
+   AFTER /api/orders/admin
+========================= */
+
+app.get("/api/orders/:id", requireAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      _id: req.params.id,
+      customer: req.user._id,
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        error: "Order not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.error("Get order error:", error);
+
+    res.status(500).json({
+      error: "Failed to get order",
+    });
+  }
+});
 
 /* =========================
    START SERVER
