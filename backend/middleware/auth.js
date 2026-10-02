@@ -1,10 +1,9 @@
-import { getFirebaseAdmin } from "../config/firebaseAdmin.js";
+import { getFirebaseAuth } from "../config/firebaseAdmin.js";
 import User from "../models/User.js";
 
-// Accounts allowed to use the Admin / Rider interface
 const ADMIN_EMAILS = [
   "mainaemmanuel855@gmail.com",
-  "kimaningugihenry@gmail.com"
+  "kimaningugihenry@gmail.com",
 ];
 
 export async function requireAuth(req, res, next) {
@@ -13,44 +12,40 @@ export async function requireAuth(req, res, next) {
 
     if (!header?.startsWith("Bearer ")) {
       return res.status(401).json({
-        error: "Authentication required"
+        error: "Authentication required",
       });
     }
 
     const token = header.substring(7);
 
-    const firebase = getFirebaseAdmin();
+    const firebaseAuth = getFirebaseAuth();
 
-    if (!firebase) {
+    if (!firebaseAuth) {
       return res.status(500).json({
-        error: "Firebase Admin is not configured"
+        error: "Firebase Admin is not configured",
       });
     }
 
-    // Verify Firebase login token
-    const decoded = await firebase.auth().verifyIdToken(token);
+    const decoded = await firebaseAuth.verifyIdToken(token);
 
     const email = decoded.email?.toLowerCase();
 
-    // Check whether this Firebase account is one of our admin/rider accounts
     const isAdmin = ADMIN_EMAILS.includes(email);
 
     let user = await User.findOne({
-      firebaseUid: decoded.uid
+      firebaseUid: decoded.uid,
     });
 
-    // Create MongoDB profile if it doesn't exist yet
     if (!user) {
       user = await User.create({
         firebaseUid: decoded.uid,
         name: decoded.name || "User",
         email: decoded.email || "",
         phone: decoded.phone_number || "",
-        role: isAdmin ? "ADMIN" : "CUSTOMER"
+        role: isAdmin ? "ADMIN" : "CUSTOMER",
       });
     }
 
-    // Upgrade an existing account to ADMIN if it is one of the approved emails
     if (isAdmin && user.role !== "ADMIN") {
       user.role = "ADMIN";
       await user.save();
@@ -64,7 +59,7 @@ export async function requireAuth(req, res, next) {
     console.error("Auth error:", error.message);
 
     return res.status(401).json({
-      error: "Invalid authentication token"
+      error: "Invalid authentication token",
     });
   }
 }
@@ -72,10 +67,11 @@ export async function requireAuth(req, res, next) {
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== "ADMIN") {
     return res.status(403).json({
-      error: "Admin access required"
+      error: "Admin access required",
     });
   }
 
   next();
 }
+
 
