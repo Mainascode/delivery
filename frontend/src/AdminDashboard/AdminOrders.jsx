@@ -9,6 +9,7 @@ const statuses = [
   "OUT_FOR_DELIVERY",
   "COMPLETED",
   "CANCELLED",
+  "REJECTED",
 ];
 
 function formatStatus(status) {
@@ -28,6 +29,7 @@ function getStatusClass(status) {
     case "COMPLETED":
       return "completed";
     case "CANCELLED":
+    case "REJECTED":
       return "cancelled";
     case "ACCEPTED":
     case "SHOPPING":

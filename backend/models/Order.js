@@ -52,7 +52,8 @@ const orderSchema = new mongoose.Schema(
         "SHOPPING",
         "OUT_FOR_DELIVERY",
         "COMPLETED",
-        "CANCELLED"
+        "CANCELLED",
+        "REJECTED"
       ],
       default: "PENDING"
     }

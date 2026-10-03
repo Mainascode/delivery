@@ -12,6 +12,13 @@ function formatStatus(status) {
   );
 }
 
+function getStatusClass(status) {
+  if (status === "REJECTED" || status === "CANCELLED") return "cancelled";
+  if (status === "COMPLETED") return "completed";
+  if (status === "PENDING") return "pending";
+  return "active";
+}
+
 function formatDate(value) {
   if (!value) return "Unknown";
 
@@ -96,7 +103,7 @@ export default function AdminOrderDetails() {
           </p>
         </div>
 
-        <span className="admin-status active">
+        <span className={`admin-status ${getStatusClass(order.status)}`}>
           {formatStatus(order.status)}
         </span>
       </div>

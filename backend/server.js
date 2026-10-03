@@ -293,6 +293,7 @@ app.patch(
         "OUT_FOR_DELIVERY",
         "COMPLETED",
         "CANCELLED",
+        "REJECTED",
       ];
 
       const { status } = req.body;
@@ -425,4 +426,3 @@ app.listen(PORT, () => {
     `Backend running on http://localhost:${PORT}`
   );
 });
-
