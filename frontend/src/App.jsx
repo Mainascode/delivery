@@ -1,3 +1,4 @@
+import React from "react";
 import {
 Navigate,
 NavLink,
@@ -5,99 +6,62 @@ Outlet,
 Route,
 Routes,
 useLocation,
-useNavigate,
 } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
 
 import Home from "./Home";
-import Help from "./Help";
 import Login from "./Login";
 import Register from "./Register";
 import Request from "./Request";
 import Orders from "./Orders";
+import Community from "./Community";
 import Settings from "./Settings";
 
 import AdminDashboard from "./AdminDashboard/AdminDashboard";
 import AdminOrders from "./AdminDashboard/AdminOrders";
+import AdminOrderDetails from "./AdminDashboard/AdminOrderDetails";
 import AdminSettings from "./AdminDashboard/AdminSettings";
 
 import "./index.css";
 
 /* =========================================================
-LOADING
+GENERAL HELPERS
 ========================================================= */
 
 function LoadingScreen() {
-return (
-<div className="loading-screen">
-<div className="loading-card">
-<div className="brand-mark">N</div>
+return ( <div className="loading-screen"> <div className="loading-logo">N</div> <div className="spinner" /> <p>Loading NITUME...</p> </div>
+);
+}
 
-    <p className="eyebrow">NITUME</p>
+function NotFound() {
+return ( <div className="page not-found-page"> <div className="not-found-card"> <span className="eyebrow">NITUME</span>
 
-    <h1>Loading...</h1>
 
-    <p>Getting your NITUME account ready.</p>
+    <div className="not-found-number">404</div>
 
-    <div className="loading-spinner" />
+    <h1>Page not found</h1>
+
+    <p>
+      The page you're looking for doesn't exist
+      or may have been moved.
+    </p>
+
+    <NavLink
+      to="/"
+      className="btn btn-primary"
+    >
+      Back home
+    </NavLink>
   </div>
 </div>
 
-);
-}
-
-/* =========================================================
-HOME ICON
-========================================================= */
-
-function HomeIcon() {
-return (
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" >
-<path d="M3 10.8L12 3l9 7.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-
-  <path
-    d="M5.5 9.5V21h13V9.5"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  />
-
-  <path
-    d="M9.5 21v-6h5v6"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  />
-</svg>
 
 );
 }
 
 /* =========================================================
-ADMIN ICON
-========================================================= */
-
-function AdminIcon() {
-return (
-<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" >
-<rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
-
-  <path
-    d="M8 15h2M12 11v4M16 8v7"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-  />
-</svg>
-
-);
-}
-
-/* =========================================================
-PROTECTED CUSTOMER ROUTE
+PROTECTED ROUTES
 ========================================================= */
 
 function ProtectedRoute() {
@@ -112,8 +76,10 @@ if (!user) {
 return (
 <Navigate
 to="/login"
-state={{ from: location }}
 replace
+state={{
+from: location.pathname,
+}}
 />
 );
 }
@@ -121,39 +87,18 @@ replace
 return <Outlet />;
 }
 
-/* =========================================================
-ADMIN ROUTE
-========================================================= */
-
 function AdminRoute() {
 const { user, profile, loading } = useAuth();
-const location = useLocation();
 
 if (loading) {
 return <LoadingScreen />;
 }
 
 if (!user) {
-return (
-<Navigate
-to="/login"
-state={{ from: location }}
-replace
-/>
-);
+return <Navigate to="/login" replace />;
 }
 
-/*
-
-Firebase authentication can finish before the MongoDB
-profile has been loaded. Wait instead of incorrectly
-redirecting an admin to the customer area.
-*/
-if (!profile) {
-return <LoadingScreen />;
-}
-
-if (profile.role !== "ADMIN") {
+if (profile?.role !== "ADMIN") {
 return <Navigate to="/" replace />;
 }
 
@@ -161,73 +106,54 @@ return <Outlet />;
 }
 
 /* =========================================================
-CUSTOMER TOP BAR
+CUSTOMER LAYOUT
 ========================================================= */
 
-function CustomerTopBar() {
-const { user, profile } = useAuth();
-const navigate = useNavigate();
+function CustomerLayout() {
+const { user, profile, logout } = useAuth();
 
-return (
-<header className="mobile-topbar">
-<button
-type="button"
-className="home-icon-button"
-onClick={() => navigate("/")}
-aria-label="Go to home"
-title="Home"
->
-<HomeIcon />
-</button>
+const displayName =
+profile?.name ||
+user?.displayName ||
+"Customer";
 
-  <NavLink to="/" className="topbar-brand">
-    <span className="topbar-brand-mark">N</span>
+const firstName =
+displayName.split(" ")[0] || "Customer";
 
-    <span>
-      <strong>NITUME</strong>
-      <small>Ruaka · Gathigi Estate</small>
-    </span>
-  </NavLink>
+return ( <div className="app-shell">
 
-  {!user ? (
-    <NavLink
-      to="/login"
-      className="topbar-login"
-    >
-      Sign in
-    </NavLink>
-  ) : (
-    <span className="topbar-user">
-      {profile?.name?.split(" ")[0] ||
-        user.displayName?.split(" ")[0] ||
-        "Account"}
-    </span>
-  )}
-</header>
 
-);
-}
+  {/* DESKTOP SIDEBAR */}
+  <aside className="sidebar">
 
-/* =========================================================
-CUSTOMER SIDEBAR
-========================================================= */
+    <div className="sidebar-brand">
+      <NavLink to="/" className="brand-link">
+        <div className="brand-mark">N</div>
 
-function CustomerSidebar() {
-const { user, profile } = useAuth();
+        <div>
+          <strong>NITUME</strong>
+          <span>Ruaka · Gathigi Estate</span>
+        </div>
+      </NavLink>
+    </div>
 
-return (
-<aside className="sidebar">
-<div className="sidebar-top">
-<NavLink to="/" className="brand">
-<div className="brand-mark">N</div>
+    <div className="sidebar-user">
+      <div className="user-avatar">
+        {firstName.charAt(0).toUpperCase()}
+      </div>
 
       <div>
-        <strong>NITUME</strong>
-        <span>Ruaka · Gathigi Estate</span>
+        <strong>{firstName}</strong>
+        <span>Customer</span>
       </div>
-    </NavLink>
+    </div>
 
-    <nav className="side-nav">
+    <nav className="sidebar-nav">
+
+      <span className="nav-section-label">
+        MENU
+      </span>
+
       <NavLink
         to="/"
         end
@@ -235,7 +161,7 @@ return (
           isActive ? "active" : ""
         }
       >
-        <HomeIcon />
+        <span className="nav-symbol">⌂</span>
         <span>Home</span>
       </NavLink>
 
@@ -255,9 +181,23 @@ return (
           isActive ? "active" : ""
         }
       >
-        <span className="nav-symbol">▣</span>
-        <span>My orders</span>
+        <span className="nav-symbol">▤</span>
+        <span>My Orders</span>
       </NavLink>
+
+      <NavLink
+        to="/community"
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span className="nav-symbol">⌂</span>
+        <span>Community</span>
+      </NavLink>
+
+      <span className="nav-section-label">
+        ACCOUNT
+      </span>
 
       <NavLink
         to="/details"
@@ -265,18 +205,8 @@ return (
           isActive ? "active" : ""
         }
       >
-        <span className="nav-symbol">◉</span>
-        <span>Your details</span>
-      </NavLink>
-
-      <NavLink
-        to="/help"
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span className="nav-symbol">?</span>
-        <span>Help</span>
+        <span className="nav-symbol">◯</span>
+        <span>Profile</span>
       </NavLink>
 
       <NavLink
@@ -289,229 +219,118 @@ return (
         <span>Settings</span>
       </NavLink>
 
+    </nav>
+
+    <div className="sidebar-bottom">
+
       {profile?.role === "ADMIN" && (
         <NavLink
           to="/operator"
-          className={({ isActive }) =>
-            isActive
-              ? "active admin-nav-link"
-              : "admin-nav-link"
-          }
+          className="admin-switch-link"
         >
-          <AdminIcon />
-          <span>Admin panel</span>
+          <span>▣</span>
+          <span>Operator Dashboard</span>
         </NavLink>
       )}
-    </nav>
-  </div>
 
-  <div className="sidebar-bottom">
-    {user ? (
-      <div className="sidebar-account">
-        <span className="status-dot" />
+      {user && (
+        <button
+          type="button"
+          className="logout-button"
+          onClick={logout}
+        >
+          <span>↪</span>
+          <span>Sign out</span>
+        </button>
+      )}
 
-        <div>
-          <strong>
-            {profile?.name ||
-              user.displayName ||
-              "NITUME customer"}
-          </strong>
+    </div>
+  </aside>
 
-          <span>
-            {profile?.phone ||
-              user.email ||
-              ""}
-          </span>
-        </div>
+  {/* CUSTOMER CONTENT */}
+  <main className="app-content">
+
+    <header className="customer-topbar">
+
+      <div>
+        <span className="topbar-location">
+          📍 Ruaka · Gathigi Estate
+        </span>
       </div>
-    ) : (
-      <NavLink
-        to="/login"
-        className="sidebar-signin"
-      >
-        Sign in
-      </NavLink>
-    )}
-  </div>
-</aside>
 
-);
-}
+      <div className="topbar-account">
+        <div className="topbar-avatar">
+          {firstName.charAt(0).toUpperCase()}
+        </div>
 
-/* =========================================================
-CUSTOMER MOBILE NAVIGATION
-========================================================= */
+        <span>{firstName}</span>
+      </div>
 
-function CustomerMobileNav() {
-const { user, profile } = useAuth();
+    </header>
 
-return (
-<nav className="mobile-nav">
-<NavLink
-to="/"
-end
-className={({ isActive }) =>
-isActive ? "active" : ""
-}
->
-<HomeIcon />
-<span>Home</span>
-</NavLink>
+    <div className="main-content">
+      <Outlet />
+    </div>
 
-  <NavLink
-    to="/request"
-    className={({ isActive }) =>
-      isActive ? "active" : ""
-    }
-  >
-    <span className="mobile-nav-icon">＋</span>
-    <span>Request</span>
-  </NavLink>
+  </main>
 
-  {user ? (
+  {/* MOBILE BOTTOM NAV */}
+  <nav className="mobile-bottom-nav">
+
+    <NavLink
+      to="/"
+      end
+      className={({ isActive }) =>
+        isActive ? "active" : ""
+      }
+    >
+      <span>⌂</span>
+      <small>Home</small>
+    </NavLink>
+
     <NavLink
       to="/orders"
       className={({ isActive }) =>
         isActive ? "active" : ""
       }
     >
-      <span className="mobile-nav-icon">▣</span>
-      <span>Orders</span>
+      <span>▤</span>
+      <small>Orders</small>
     </NavLink>
-  ) : (
+
     <NavLink
-      to="/login"
+      to="/request"
       className={({ isActive }) =>
         isActive ? "active" : ""
       }
     >
-      <span className="mobile-nav-icon">→</span>
-      <span>Sign in</span>
+      <span className="mobile-nav-main">＋</span>
+      <small>Request</small>
     </NavLink>
-  )}
 
-  <NavLink
-    to="/settings"
-    className={({ isActive }) =>
-      isActive ? "active" : ""
-    }
-  >
-    <span className="mobile-nav-icon">⚙</span>
-    <span>Settings</span>
-  </NavLink>
-
-  {profile?.role === "ADMIN" && (
     <NavLink
-      to="/operator"
+      to="/community"
       className={({ isActive }) =>
         isActive ? "active" : ""
       }
     >
-      <AdminIcon />
-      <span>Admin</span>
+      <span>⌂</span>
+      <small>Community</small>
     </NavLink>
-  )}
-</nav>
 
-);
-}
+    <NavLink
+      to="/settings"
+      className={({ isActive }) =>
+        isActive ? "active" : ""
+      }
+    >
+      <span>⚙</span>
+      <small>Settings</small>
+    </NavLink>
 
-/* =========================================================
-CUSTOMER LAYOUT
-========================================================= */
-
-function CustomerLayout() {
-return (
-<div className="app-shell">
-<CustomerSidebar />
-
-  <div className="app-content">
-    <CustomerTopBar />
-
-    <main className="main-content">
-      <Outlet />
-    </main>
-  </div>
-
-  <CustomerMobileNav />
+  </nav>
 </div>
 
-);
-}
-
-/* =========================================================
-DETAILS
-========================================================= */
-
-function DetailsPage() {
-const { profile, user } = useAuth();
-const navigate = useNavigate();
-
-return (
-<div className="page">
-<div className="page-toolbar">
-<button
-type="button"
-className="home-button"
-onClick={() => navigate("/")}
->
-<HomeIcon />
-<span>Home</span>
-</button>
-</div>
-
-  <header className="page-header">
-    <div>
-      <p className="eyebrow">ACCOUNT</p>
-
-      <h1>Your details</h1>
-
-      <p className="page-description">
-        Your NITUME account information.
-      </p>
-    </div>
-  </header>
-
-  <div className="details-grid">
-    <article className="detail-card">
-      <span>Name</span>
-
-      <strong>
-        {profile?.name ||
-          user?.displayName ||
-          "Not provided"}
-      </strong>
-    </article>
-
-    <article className="detail-card">
-      <span>Email</span>
-
-      <strong>
-        {profile?.email ||
-          user?.email ||
-          "Not provided"}
-      </strong>
-    </article>
-
-    <article className="detail-card">
-      <span>Phone</span>
-
-      <strong>
-        {profile?.phone ||
-          user?.phoneNumber ||
-          "Not provided"}
-      </strong>
-    </article>
-
-    <article className="detail-card">
-      <span>Account type</span>
-
-      <strong>
-        {profile?.role || "CUSTOMER"}
-      </strong>
-    </article>
-  </div>
-</div>
 
 );
 }
@@ -521,155 +340,377 @@ ADMIN LAYOUT
 ========================================================= */
 
 function AdminLayout() {
-const { profile, user, logout } = useAuth();
+const { user, profile, logout } = useAuth();
 
-return (
-<div className="admin-shell">
-<aside className="admin-sidebar">
-<div className="admin-sidebar-top">
-<NavLink to="/operator" end className="admin-brand" >
-<div className="brand-mark">N</div>
+const [mobileMenuOpen, setMobileMenuOpen] =
+React.useState(false);
+
+const adminName =
+profile?.name ||
+user?.displayName ||
+"Operator";
+
+function closeMobileMenu() {
+setMobileMenuOpen(false);
+}
+
+return ( <div className="admin-shell">
+
+
+  {/* DESKTOP ADMIN SIDEBAR */}
+  <aside className="admin-sidebar">
+
+    <div className="admin-brand">
+      <NavLink
+        to="/operator"
+        className="admin-brand-link"
+        onClick={closeMobileMenu}
+      >
+        <div className="admin-brand-mark">
+          N
+        </div>
 
         <div>
           <strong>NITUME</strong>
-          <span>ADMIN PANEL</span>
+          <span>Operator</span>
         </div>
       </NavLink>
-
-      <nav className="admin-nav">
-        <NavLink
-          to="/operator"
-          end
-          className={({ isActive }) =>
-            isActive ? "active" : ""
-          }
-        >
-          <AdminIcon />
-          <span>Dashboard</span>
-        </NavLink>
-
-        <NavLink
-          to="/operator/orders"
-          className={({ isActive }) =>
-            isActive ? "active" : ""
-          }
-        >
-          <span className="nav-symbol">▣</span>
-          <span>Orders</span>
-        </NavLink>
-
-        <NavLink
-          to="/operator/settings"
-          className={({ isActive }) =>
-            isActive ? "active" : ""
-          }
-        >
-          <span className="nav-symbol">⚙</span>
-          <span>Settings</span>
-        </NavLink>
-
-        <NavLink
-          to="/"
-          className="admin-customer-link"
-        >
-          <HomeIcon />
-          <span>Customer app</span>
-        </NavLink>
-      </nav>
     </div>
 
-    <div className="admin-sidebar-bottom">
-      <div className="admin-account">
-        <span className="status-dot" />
-
-        <div>
-          <strong>
-            {profile?.name ||
-              user?.displayName ||
-              "Administrator"}
-          </strong>
-
-          <span>
-            {user?.email || ""}
-          </span>
-        </div>
+    <div className="admin-profile">
+      <div className="admin-profile-avatar">
+        {adminName.charAt(0).toUpperCase()}
       </div>
+
+      <div>
+        <strong>{adminName}</strong>
+        <span>Administrator</span>
+      </div>
+    </div>
+
+    <nav className="admin-nav">
+
+      <span className="admin-nav-label">
+        OPERATIONS
+      </span>
+
+      <NavLink
+        to="/operator"
+        end
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>▦</span>
+        <span>Dashboard</span>
+      </NavLink>
+
+      <NavLink
+        to="/operator/orders"
+        end
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>▤</span>
+        <span>Orders</span>
+      </NavLink>
+
+      <span className="admin-nav-label">
+        SYSTEM
+      </span>
+
+      <NavLink
+        to="/operator/settings"
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>⚙</span>
+        <span>Settings</span>
+      </NavLink>
+
+    </nav>
+
+    <div className="admin-sidebar-bottom">
+
+      <NavLink
+        to="/"
+        className="admin-customer-link"
+        onClick={closeMobileMenu}
+      >
+        <span>←</span>
+        <span>Customer site</span>
+      </NavLink>
 
       <button
         type="button"
         className="admin-logout"
         onClick={logout}
       >
-        Sign out
+        <span>↪</span>
+        <span>Sign out</span>
       </button>
+
     </div>
+
   </aside>
 
-  <div className="admin-content">
-    <header className="admin-topbar">
+  {/* MOBILE ADMIN HEADER */}
+  <header className="admin-mobile-header">
+
+    <NavLink
+      to="/operator"
+      className="admin-mobile-brand"
+    >
+      <div className="admin-brand-mark">
+        N
+      </div>
+
       <div>
-        <span className="eyebrow">
-          NITUME OPERATIONS
-        </span>
+        <strong>NITUME</strong>
+        <span>Operator</span>
+      </div>
+    </NavLink>
 
-        <strong>Admin panel</strong>
+    <button
+      type="button"
+      className="admin-mobile-menu-button"
+      aria-label="Open admin menu"
+      onClick={() =>
+        setMobileMenuOpen(true)
+      }
+    >
+      ☰
+    </button>
+
+  </header>
+
+  {/* MOBILE BACKDROP */}
+  {mobileMenuOpen && (
+    <div
+      className="admin-mobile-backdrop"
+      onClick={closeMobileMenu}
+    />
+  )}
+
+  {/* MOBILE DRAWER */}
+  <aside
+    className={`admin-mobile-drawer ${
+      mobileMenuOpen ? "open" : ""
+    }`}
+  >
+
+    <div className="admin-mobile-drawer-header">
+
+      <div className="admin-brand-link">
+        <div className="admin-brand-mark">
+          N
+        </div>
+
+        <div>
+          <strong>NITUME</strong>
+          <span>Operator</span>
+        </div>
       </div>
 
-      <div className="admin-topbar-user">
-        <span className="status-dot" />
+      <button
+        type="button"
+        className="admin-mobile-close"
+        aria-label="Close admin menu"
+        onClick={closeMobileMenu}
+      >
+        ×
+      </button>
 
-        <span>
-          {profile?.name ||
-            user?.displayName ||
-            "Administrator"}
-        </span>
+    </div>
+
+    <div className="admin-profile">
+      <div className="admin-profile-avatar">
+        {adminName.charAt(0).toUpperCase()}
       </div>
-    </header>
 
-    <main className="admin-main">
+      <div>
+        <strong>{adminName}</strong>
+        <span>Administrator</span>
+      </div>
+    </div>
+
+    <nav className="admin-nav">
+
+      <span className="admin-nav-label">
+        OPERATIONS
+      </span>
+
+      <NavLink
+        to="/operator"
+        end
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>▦</span>
+        <span>Dashboard</span>
+      </NavLink>
+
+      <NavLink
+        to="/operator/orders"
+        end
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>▤</span>
+        <span>Orders</span>
+      </NavLink>
+
+      <span className="admin-nav-label">
+        SYSTEM
+      </span>
+
+      <NavLink
+        to="/operator/settings"
+        onClick={closeMobileMenu}
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>⚙</span>
+        <span>Settings</span>
+      </NavLink>
+
+    </nav>
+
+    <div className="admin-sidebar-bottom">
+
+      <NavLink
+        to="/"
+        className="admin-customer-link"
+        onClick={closeMobileMenu}
+      >
+        <span>←</span>
+        <span>Customer site</span>
+      </NavLink>
+
+      <button
+        type="button"
+        className="admin-logout"
+        onClick={logout}
+      >
+        <span>↪</span>
+        <span>Sign out</span>
+      </button>
+
+    </div>
+
+  </aside>
+
+  {/* ADMIN CONTENT */}
+  <main className="admin-content">
+
+    <div className="admin-main">
       <Outlet />
-    </main>
-  </div>
+    </div>
+
+  </main>
+
 </div>
+
 
 );
 }
 
 /* =========================================================
-404
+DETAILS PAGE
 ========================================================= */
 
-function NotFound() {
-const navigate = useNavigate();
+function DetailsPage() {
+const { profile, user } = useAuth();
 
-return (
-<div className="page">
-<div className="empty-card not-found-card">
-<div className="not-found-number">
-404
-</div>
+return ( <div className="page details-page">
 
-    <p className="eyebrow">
-      PAGE NOT FOUND
-    </p>
 
-    <h1>This page isn't available.</h1>
+  <div className="page-heading">
+    <span className="eyebrow">
+      YOUR ACCOUNT
+    </span>
+
+    <h1>Your Details</h1>
 
     <p>
-      The page may have moved or the address may
-      be incorrect.
+      Your account information used for NITUME
+      deliveries.
     </p>
-
-    <button
-      type="button"
-      className="btn btn-primary"
-      onClick={() => navigate("/")}
-    >
-      <HomeIcon />
-      Go home
-    </button>
   </div>
+
+  <section className="page-card details-card">
+
+    <div className="details-profile">
+
+      <div className="details-avatar">
+        {(profile?.name ||
+          user?.displayName ||
+          "U")
+          .charAt(0)
+          .toUpperCase()}
+      </div>
+
+      <div>
+        <h2>
+          {profile?.name ||
+            user?.displayName ||
+            "Customer"}
+        </h2>
+
+        <p>
+          {profile?.email ||
+            user?.email ||
+            "No email"}
+        </p>
+      </div>
+
+    </div>
+
+    <div className="details-list">
+
+      <div>
+        <span>Name</span>
+        <strong>
+          {profile?.name ||
+            user?.displayName ||
+            "Not provided"}
+        </strong>
+      </div>
+
+      <div>
+        <span>Email</span>
+        <strong>
+          {profile?.email ||
+            user?.email ||
+            "Not provided"}
+        </strong>
+      </div>
+
+      <div>
+        <span>Phone</span>
+        <strong>
+          {profile?.phone ||
+            user?.phoneNumber ||
+            "Not provided"}
+        </strong>
+      </div>
+
+    </div>
+
+  </section>
+
 </div>
+
 
 );
 }
@@ -679,38 +720,36 @@ APP ROUTES
 ========================================================= */
 
 export default function NitumeApp() {
-return (
-<Routes>
-{/* =====================================================
-PUBLIC AUTH PAGES
-===================================================== */}
+return ( <Routes>
 
-  <Route
-    path="/login"
-    element={<Login />}
-  />
 
-  <Route
-    path="/signup"
-    element={<Register />}
-  />
-
-  {/* =====================================================
-      CUSTOMER APP
-      ===================================================== */}
-
+  {/* PUBLIC CUSTOMER AREA */}
   <Route element={<CustomerLayout />}>
+
     <Route
       path="/"
       element={<Home />}
     />
 
+
     <Route
-      path="/help"
-      element={<Help />}
+      path="/community"
+      element={<Community />}
     />
 
+    <Route
+      path="/login"
+      element={<Login />}
+    />
+
+    <Route
+      path="/signup"
+      element={<Register />}
+    />
+
+    {/* CUSTOMER PROTECTED AREA */}
     <Route element={<ProtectedRoute />}>
+
       <Route
         path="/request"
         element={<Request />}
@@ -722,52 +761,65 @@ PUBLIC AUTH PAGES
       />
 
       <Route
-        path="/settings"
-        element={<Settings />}
+        path="/orders/:id"
+        element={
+          <div className="page">
+            <Orders />
+          </div>
+        }
       />
 
       <Route
         path="/details"
         element={<DetailsPage />}
       />
+
+      <Route
+        path="/settings"
+        element={<Settings />}
+      />
+
     </Route>
+
   </Route>
 
-  {/* =====================================================
-      ADMIN / OPERATOR APP
-      ===================================================== */}
-
+  {/* ADMIN AREA */}
   <Route element={<AdminRoute />}>
-    <Route
-      path="/operator"
-      element={<AdminLayout />}
-    >
+
+    <Route element={<AdminLayout />}>
+
       <Route
-        index
+        path="/operator"
         element={<AdminDashboard />}
       />
 
       <Route
-        path="orders"
+        path="/operator/orders"
         element={<AdminOrders />}
       />
 
       <Route
-        path="settings"
+        path="/operator/orders/:id"
+        element={<AdminOrderDetails />}
+      />
+
+      <Route
+        path="/operator/settings"
         element={<AdminSettings />}
       />
+
     </Route>
+
   </Route>
 
-  {/* =====================================================
-      404
-      ===================================================== */}
-
+  {/* FALLBACK */}
   <Route
     path="*"
     element={<NotFound />}
   />
+
 </Routes>
+
 
 );
 }

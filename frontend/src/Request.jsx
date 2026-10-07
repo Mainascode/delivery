@@ -138,7 +138,7 @@ export default function Request() {
     <div className="page request-page">
       <div className="page-header">
         <div>
-          <div className="eyebrow">REQUEST A RIDER</div>
+          <div className="eyebrow">REQUEST A DELIVERY</div>
 
           <h1>What do you need?</h1>
 

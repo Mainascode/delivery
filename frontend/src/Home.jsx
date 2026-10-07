@@ -175,9 +175,7 @@ export default function Home() {
           </p>
         </div>
 
-        <Link to="/help" className="text-link">
-          Help & coverage →
-        </Link>
+
       </section>
     </div>
   );

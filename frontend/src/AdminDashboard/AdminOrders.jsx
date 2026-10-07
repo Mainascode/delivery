@@ -3,13 +3,11 @@ import { Link } from "react-router-dom";
 import { api } from "../services/api";
 
 const statuses = [
-  "PENDING",
   "ACCEPTED",
   "SHOPPING",
   "OUT_FOR_DELIVERY",
   "COMPLETED",
   "CANCELLED",
-  "REJECTED",
 ];
 
 function formatStatus(status) {
@@ -24,19 +22,19 @@ function formatStatus(status) {
 
 function getStatusClass(status) {
   switch (status) {
-    case "PENDING":
-      return "pending";
     case "COMPLETED":
       return "completed";
+
     case "CANCELLED":
-    case "REJECTED":
       return "cancelled";
+
     case "ACCEPTED":
     case "SHOPPING":
     case "OUT_FOR_DELIVERY":
       return "active";
+
     default:
-      return "";
+      return "pending";
   }
 }
 
@@ -47,6 +45,18 @@ function formatDate(value) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function getShortId(order) {
+  const id = order?._id || order?.id;
+
+  return id ? id.slice(-6).toUpperCase() : "UNKNOWN";
+}
+
+function getCustomerInitial(order) {
+  return (order?.customer?.name || "Customer")
+    .charAt(0)
+    .toUpperCase();
 }
 
 export default function AdminOrders() {
@@ -67,10 +77,14 @@ export default function AdminOrders() {
       setError("");
 
       const data = await api("/api/orders/admin");
+
       setOrders(data.orders || []);
     } catch (err) {
       console.error("Failed to load admin orders:", err);
-      setError(err.message || "Unable to load orders.");
+
+      setError(
+        err.message || "Unable to load customer orders."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -94,7 +108,10 @@ export default function AdminOrders() {
       await loadOrders(true);
     } catch (err) {
       console.error("Failed to update order:", err);
-      setError(err.message || "Unable to update order status.");
+
+      setError(
+        err.message || "Unable to update order status."
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -105,10 +122,12 @@ export default function AdminOrders() {
       <div className="admin-page-heading">
         <div>
           <span className="eyebrow">NITUME / OPERATOR</span>
+
           <h1>Orders</h1>
+
           <p>
-            Review customer requests and move each delivery through its
-            current stage.
+            Review customer requests and manage each delivery from
+            acceptance to completion.
           </p>
         </div>
 
@@ -125,7 +144,11 @@ export default function AdminOrders() {
       {error && (
         <div className="admin-alert admin-alert-error">
           <span>{error}</span>
-          <button type="button" onClick={() => loadOrders()}>
+
+          <button
+            type="button"
+            onClick={() => loadOrders()}
+          >
             Try again
           </button>
         </div>
@@ -138,81 +161,110 @@ export default function AdminOrders() {
         </div>
       ) : orders.length === 0 ? (
         <div className="admin-empty">
-          <div>📦</div>
+          <div className="admin-empty-icon">📦</div>
+
           <h2>No orders yet</h2>
+
           <p>
-            Customer requests will appear here when they are submitted.
+            Customer requests will appear here when they are
+            submitted.
           </p>
         </div>
       ) : (
         <div className="admin-orders-list">
           {orders.map((order) => {
             const id = order._id || order.id;
-            const shortId = id
-              ? id.slice(-6).toUpperCase()
-              : "UNKNOWN";
+
+            const currentStatus =
+              order.status || "ACCEPTED";
 
             const customer = order.customer;
 
+            const isUpdating =
+              updatingId?.startsWith(`${id}-`);
+
             return (
-              <article className="admin-order-card" key={id}>
+              <article
+                className="admin-order-card"
+                key={id}
+              >
+                {/* ORDER HEADER */}
                 <div className="admin-order-top">
                   <div>
-                    <span className="order-label">ORDER</span>
-                    <h2>#{shortId}</h2>
-                    <small>{formatDate(order.createdAt)}</small>
+                    <span className="order-label">
+                      ORDER
+                    </span>
+
+                    <h2>#{getShortId(order)}</h2>
+
+                    <small>
+                      {formatDate(order.createdAt)}
+                    </small>
                   </div>
 
                   <span
                     className={`admin-status ${getStatusClass(
-                      order.status
+                      currentStatus
                     )}`}
                   >
-                    {formatStatus(order.status)}
+                    {formatStatus(currentStatus)}
                   </span>
                 </div>
 
+                {/* CUSTOMER */}
                 <div className="admin-customer">
                   <div className="customer-avatar">
-                    {(customer?.name || "C").charAt(0).toUpperCase()}
+                    {getCustomerInitial(order)}
                   </div>
 
                   <div>
                     <strong>
                       {customer?.name || "Customer"}
                     </strong>
+
                     <span>
-                      {customer?.email || "No email provided"}
+                      {customer?.email ||
+                        "No email provided"}
                     </span>
+
                     {customer?.phone && (
                       <span>{customer.phone}</span>
                     )}
                   </div>
                 </div>
 
+                {/* ORDER INFORMATION */}
                 <div className="admin-order-info-grid">
                   <div>
                     <span>ITEMS</span>
-                    <p>{order.items || "No items provided"}</p>
+
+                    <p>
+                      {order.items ||
+                        "No items provided"}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span>PICKUP / SHOP</span>
+
+                    <p>
+                      {order.pickupLocation ||
+                        "Not provided"}
+                    </p>
                   </div>
 
                   <div>
                     <span>DELIVERY LOCATION</span>
+
                     <p>
                       {order.deliveryLocation ||
-                        "No delivery location provided"}
+                        "Not provided"}
                     </p>
                   </div>
 
-                  {order.pickupLocation && (
-                    <div>
-                      <span>PICKUP / SHOP</span>
-                      <p>{order.pickupLocation}</p>
-                    </div>
-                  )}
-
                   <div>
                     <span>DELIVERY FEE</span>
+
                     <p>
                       {order.deliveryFee != null
                         ? `KES ${order.deliveryFee}`
@@ -221,26 +273,33 @@ export default function AdminOrders() {
                   </div>
                 </div>
 
+                {/* NOTES */}
                 {order.notes && (
                   <div className="admin-order-notes">
-                    <span>NOTES</span>
+                    <span>CUSTOMER NOTES</span>
+
                     <p>{order.notes}</p>
                   </div>
                 )}
 
+                {/* STATUS */}
                 <div className="admin-order-actions">
                   <div className="admin-order-actions-header">
-                    <strong>Update status</strong>
+                    <strong>Order status</strong>
 
-                    {updatingId?.startsWith(`${id}-`) && (
-                      <span>Updating...</span>
+                    {isUpdating && (
+                      <span className="updating-text">
+                        Updating...
+                      </span>
                     )}
                   </div>
 
                   <div className="status-actions">
                     {statuses.map((status) => {
-                      const isCurrent = order.status === status;
-                      const isUpdating =
+                      const isCurrent =
+                        currentStatus === status;
+
+                      const isUpdatingThis =
                         updatingId === `${id}-${status}`;
 
                       return (
@@ -250,14 +309,12 @@ export default function AdminOrders() {
                           className={`status-action ${
                             isCurrent ? "selected" : ""
                           }`}
-                          disabled={
-                            updatingId?.startsWith(`${id}-`)
-                          }
+                          disabled={isUpdating}
                           onClick={() =>
                             updateStatus(id, status)
                           }
                         >
-                          {isUpdating
+                          {isUpdatingThis
                             ? "Updating..."
                             : formatStatus(status)}
                         </button>
@@ -266,6 +323,7 @@ export default function AdminOrders() {
                   </div>
                 </div>
 
+                {/* FOOTER */}
                 <div className="admin-order-footer">
                   <Link
                     to={`/operator/orders/${id}`}

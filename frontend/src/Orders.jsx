@@ -159,7 +159,7 @@ export default function Orders() {
             to="/request"
             className="btn btn-primary"
           >
-            Request a rider
+            Request a delivery
           </Link>
         </div>
       ) : (
