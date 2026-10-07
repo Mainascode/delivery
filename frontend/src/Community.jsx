@@ -68,7 +68,7 @@ export default function Community() {
 
               <p>
                 We believe local delivery should feel personal. You know
-                the area. We know the area. Together, we keep everyday
+                the area. We know the area. Together we keep everyday
                 errands moving.
               </p>
 
@@ -130,7 +130,7 @@ export default function Community() {
           </div>
 
           <p>
-            Whether you need something picked up, bought, or delivered,
+            Whether you need something picked up, bought or delivered.
             NITUME is here to make the small things easier.
           </p>
         </section>

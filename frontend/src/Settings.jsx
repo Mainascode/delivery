@@ -27,8 +27,12 @@ export default function Settings() {
   }
 
   const name = profile?.name || user?.displayName || "Not set";
-  const email = user?.email || "Not set";
+  const email = user?.email || profile?.email || "Not set";
   const phone = profile?.phone || "Not set";
+
+  // Check both profile and Firebase user, and accept ADMIN/admin
+  const role = String(profile?.role || user?.role || "").toUpperCase();
+  const isAdmin = role === "ADMIN";
 
   return (
     <div className="page settings-page">
@@ -45,8 +49,8 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* ACCOUNT DETAILS */}
       <div className="settings-layout">
+        {/* ACCOUNT DETAILS */}
         <section className="settings-card">
           <div className="settings-card-header">
             <div>
@@ -77,6 +81,32 @@ export default function Settings() {
             </div>
           </div>
         </section>
+
+        {/* OPERATOR DASHBOARD — ADMIN ONLY */}
+        {isAdmin && (
+          <section className="settings-card operator-settings-card">
+            <div className="settings-card-header">
+              <div>
+                <div className="eyebrow">ADMINISTRATION</div>
+
+                <h2>Operator dashboard</h2>
+
+                <p>
+                  Manage customer requests, orders, pricing and NITUME
+                  operations.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate("/operator")}
+            >
+              Open operator dashboard
+            </button>
+          </section>
+        )}
 
         {/* ACCOUNT ACTIONS */}
         <section className="settings-card settings-danger">
@@ -118,8 +148,6 @@ export default function Settings() {
             NITUME helps with shopping, errands and local deliveries
             around Ruaka and Gathigi Estate.
           </p>
-
-         
         </section>
       </div>
     </div>

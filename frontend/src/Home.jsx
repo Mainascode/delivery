@@ -64,7 +64,7 @@ export default function Home() {
 
           <div className="hero-actions">
             <Link to="/request" className="btn btn-primary">
-              Request a rider
+              Request a delivery
             </Link>
 
             <Link to="/orders" className="btn btn-secondary">

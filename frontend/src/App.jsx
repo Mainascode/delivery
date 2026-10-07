@@ -223,15 +223,15 @@ return ( <div className="app-shell">
 
     <div className="sidebar-bottom">
 
-      {profile?.role === "ADMIN" && (
-        <NavLink
-          to="/operator"
-          className="admin-switch-link"
-        >
-          <span>▣</span>
-          <span>Operator Dashboard</span>
-        </NavLink>
-      )}
+{String(profile?.role || "").toUpperCase() === "ADMIN" && (
+  <NavLink
+    to="/operator"
+    className="admin-switch-link"
+  >
+    <span>▣</span>
+    <span>Operator Dashboard</span>
+  </NavLink>
+)}
 
       {user && (
         <button
