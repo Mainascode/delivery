@@ -119,13 +119,7 @@ export default function Settings() {
             around Ruaka and Gathigi Estate.
           </p>
 
-          <button
-            type="button"
-            className="text-link settings-link-button"
-            onClick={() => navigate("/help")}
-          >
-            Help & coverage →
-          </button>
+         
         </section>
       </div>
     </div>

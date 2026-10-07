@@ -340,289 +340,302 @@ ADMIN LAYOUT
 ========================================================= */
 
 function AdminLayout() {
-const { user, profile, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-const [mobileMenuOpen, setMobileMenuOpen] =
-React.useState(false);
+  const adminName =
+    profile?.name ||
+    user?.displayName ||
+    "Operator";
 
-const adminName =
-profile?.name ||
-user?.displayName ||
-"Operator";
+  function closeMobileMenu() {
+    setMobileMenuOpen(false);
+  }
 
-function closeMobileMenu() {
-setMobileMenuOpen(false);
-}
+  return (
+    <div className="admin-shell">
 
-return ( <div className="admin-shell">
+      {/* =====================================================
+          DESKTOP SIDEBAR
+      ===================================================== */}
+      <aside className="admin-sidebar">
 
+        <div className="admin-brand">
+          <NavLink
+            to="/operator"
+            className="admin-brand-link"
+          >
+            <div className="admin-brand-mark">
+              N
+            </div>
 
-  {/* DESKTOP ADMIN SIDEBAR */}
-  <aside className="admin-sidebar">
-
-    <div className="admin-brand">
-      <NavLink
-        to="/operator"
-        className="admin-brand-link"
-        onClick={closeMobileMenu}
-      >
-        <div className="admin-brand-mark">
-          N
+            <div>
+              <strong>NITUME</strong>
+              <span>Operator</span>
+            </div>
+          </NavLink>
         </div>
 
-        <div>
-          <strong>NITUME</strong>
-          <span>Operator</span>
-        </div>
-      </NavLink>
-    </div>
+        <div className="admin-profile">
+          <div className="admin-profile-avatar">
+            {adminName.charAt(0).toUpperCase()}
+          </div>
 
-    <div className="admin-profile">
-      <div className="admin-profile-avatar">
-        {adminName.charAt(0).toUpperCase()}
-      </div>
-
-      <div>
-        <strong>{adminName}</strong>
-        <span>Administrator</span>
-      </div>
-    </div>
-
-    <nav className="admin-nav">
-
-      <span className="admin-nav-label">
-        OPERATIONS
-      </span>
-
-      <NavLink
-        to="/operator"
-        end
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>▦</span>
-        <span>Dashboard</span>
-      </NavLink>
-
-      <NavLink
-        to="/operator/orders"
-        end
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>▤</span>
-        <span>Orders</span>
-      </NavLink>
-
-      <span className="admin-nav-label">
-        SYSTEM
-      </span>
-
-      <NavLink
-        to="/operator/settings"
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>⚙</span>
-        <span>Settings</span>
-      </NavLink>
-
-    </nav>
-
-    <div className="admin-sidebar-bottom">
-
-      <NavLink
-        to="/"
-        className="admin-customer-link"
-        onClick={closeMobileMenu}
-      >
-        <span>←</span>
-        <span>Customer site</span>
-      </NavLink>
-
-      <button
-        type="button"
-        className="admin-logout"
-        onClick={logout}
-      >
-        <span>↪</span>
-        <span>Sign out</span>
-      </button>
-
-    </div>
-
-  </aside>
-
-  {/* MOBILE ADMIN HEADER */}
-  <header className="admin-mobile-header">
-
-    <NavLink
-      to="/operator"
-      className="admin-mobile-brand"
-    >
-      <div className="admin-brand-mark">
-        N
-      </div>
-
-      <div>
-        <strong>NITUME</strong>
-        <span>Operator</span>
-      </div>
-    </NavLink>
-
-    <button
-      type="button"
-      className="admin-mobile-menu-button"
-      aria-label="Open admin menu"
-      onClick={() =>
-        setMobileMenuOpen(true)
-      }
-    >
-      ☰
-    </button>
-
-  </header>
-
-  {/* MOBILE BACKDROP */}
-  {mobileMenuOpen && (
-    <div
-      className="admin-mobile-backdrop"
-      onClick={closeMobileMenu}
-    />
-  )}
-
-  {/* MOBILE DRAWER */}
-  <aside
-    className={`admin-mobile-drawer ${
-      mobileMenuOpen ? "open" : ""
-    }`}
-  >
-
-    <div className="admin-mobile-drawer-header">
-
-      <div className="admin-brand-link">
-        <div className="admin-brand-mark">
-          N
+          <div>
+            <strong>{adminName}</strong>
+            <span>Administrator</span>
+          </div>
         </div>
 
-        <div>
-          <strong>NITUME</strong>
-          <span>Operator</span>
+        <nav className="admin-nav">
+
+          <span className="admin-nav-label">
+            OPERATIONS
+          </span>
+
+          <NavLink
+            to="/operator"
+            end
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>▦</span>
+            <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink
+            to="/operator/orders"
+            end
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>▤</span>
+            <span>Orders</span>
+          </NavLink>
+
+          <span className="admin-nav-label">
+            SYSTEM
+          </span>
+
+          <NavLink
+            to="/operator/settings"
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>⚙</span>
+            <span>Settings</span>
+          </NavLink>
+
+        </nav>
+
+        <div className="admin-sidebar-bottom">
+
+          <NavLink
+            to="/"
+            className="admin-customer-link"
+          >
+            <span>←</span>
+            <span>Customer site</span>
+          </NavLink>
+
+          <button
+            type="button"
+            className="admin-logout"
+            onClick={logout}
+          >
+            <span>↪</span>
+            <span>Sign out</span>
+          </button>
+
         </div>
-      </div>
+      </aside>
 
-      <button
-        type="button"
-        className="admin-mobile-close"
-        aria-label="Close admin menu"
-        onClick={closeMobileMenu}
+
+      {/* =====================================================
+          MOBILE HEADER
+      ===================================================== */}
+      <header className="admin-mobile-header">
+
+        <NavLink
+          to="/operator"
+          className="admin-mobile-brand"
+        >
+          <div className="admin-brand-mark">
+            N
+          </div>
+
+          <div>
+            <strong>NITUME</strong>
+            <span>Operator</span>
+          </div>
+        </NavLink>
+
+        <button
+          type="button"
+          className="admin-mobile-menu-button"
+          aria-label="Open admin menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(true)}
+        >
+          <span>☰</span>
+        </button>
+
+      </header>
+
+
+      {/* =====================================================
+          MOBILE BACKDROP
+      ===================================================== */}
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          className="admin-mobile-backdrop"
+          aria-label="Close admin menu"
+          onClick={closeMobileMenu}
+        />
+      )}
+
+
+      {/* =====================================================
+          MOBILE DRAWER
+      ===================================================== */}
+      <aside
+        className={`admin-mobile-drawer ${
+          mobileMenuOpen ? "open" : ""
+        }`}
+        aria-hidden={!mobileMenuOpen}
       >
-        ×
-      </button>
+
+        <div className="admin-mobile-drawer-header">
+
+          <div className="admin-brand-link">
+
+            <div className="admin-brand-mark">
+              N
+            </div>
+
+            <div>
+              <strong>NITUME</strong>
+              <span>Operator</span>
+            </div>
+
+          </div>
+
+          <button
+            type="button"
+            className="admin-mobile-close"
+            aria-label="Close admin menu"
+            onClick={closeMobileMenu}
+          >
+            ×
+          </button>
+
+        </div>
+
+
+        <div className="admin-profile">
+
+          <div className="admin-profile-avatar">
+            {adminName.charAt(0).toUpperCase()}
+          </div>
+
+          <div>
+            <strong>{adminName}</strong>
+            <span>Administrator</span>
+          </div>
+
+        </div>
+
+
+        <nav className="admin-nav">
+
+          <span className="admin-nav-label">
+            OPERATIONS
+          </span>
+
+          <NavLink
+            to="/operator"
+            end
+            onClick={closeMobileMenu}
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>▦</span>
+            <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink
+            to="/operator/orders"
+            end
+            onClick={closeMobileMenu}
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>▤</span>
+            <span>Orders</span>
+          </NavLink>
+
+          <span className="admin-nav-label">
+            SYSTEM
+          </span>
+
+          <NavLink
+            to="/operator/settings"
+            onClick={closeMobileMenu}
+            className={({ isActive }) =>
+              isActive ? "active" : ""
+            }
+          >
+            <span>⚙</span>
+            <span>Settings</span>
+          </NavLink>
+
+        </nav>
+
+
+        <div className="admin-sidebar-bottom">
+
+          <NavLink
+            to="/"
+            className="admin-customer-link"
+            onClick={closeMobileMenu}
+          >
+            <span>←</span>
+            <span>Customer site</span>
+          </NavLink>
+
+          <button
+            type="button"
+            className="admin-logout"
+            onClick={logout}
+          >
+            <span>↪</span>
+            <span>Sign out</span>
+          </button>
+
+        </div>
+
+      </aside>
+
+
+      {/* =====================================================
+          ADMIN CONTENT
+      ===================================================== */}
+      <main className="admin-content">
+
+        <div className="admin-main">
+          <Outlet />
+        </div>
+
+      </main>
 
     </div>
-
-    <div className="admin-profile">
-      <div className="admin-profile-avatar">
-        {adminName.charAt(0).toUpperCase()}
-      </div>
-
-      <div>
-        <strong>{adminName}</strong>
-        <span>Administrator</span>
-      </div>
-    </div>
-
-    <nav className="admin-nav">
-
-      <span className="admin-nav-label">
-        OPERATIONS
-      </span>
-
-      <NavLink
-        to="/operator"
-        end
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>▦</span>
-        <span>Dashboard</span>
-      </NavLink>
-
-      <NavLink
-        to="/operator/orders"
-        end
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>▤</span>
-        <span>Orders</span>
-      </NavLink>
-
-      <span className="admin-nav-label">
-        SYSTEM
-      </span>
-
-      <NavLink
-        to="/operator/settings"
-        onClick={closeMobileMenu}
-        className={({ isActive }) =>
-          isActive ? "active" : ""
-        }
-      >
-        <span>⚙</span>
-        <span>Settings</span>
-      </NavLink>
-
-    </nav>
-
-    <div className="admin-sidebar-bottom">
-
-      <NavLink
-        to="/"
-        className="admin-customer-link"
-        onClick={closeMobileMenu}
-      >
-        <span>←</span>
-        <span>Customer site</span>
-      </NavLink>
-
-      <button
-        type="button"
-        className="admin-logout"
-        onClick={logout}
-      >
-        <span>↪</span>
-        <span>Sign out</span>
-      </button>
-
-    </div>
-
-  </aside>
-
-  {/* ADMIN CONTENT */}
-  <main className="admin-content">
-
-    <div className="admin-main">
-      <Outlet />
-    </div>
-
-  </main>
-
-</div>
-
-
-);
+  );
 }
 
 /* =========================================================
