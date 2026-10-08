@@ -8,6 +8,8 @@ import { connectDB } from "./config/database.js";
 import Order from "./models/Order.js";
 import Settings from "./models/Settings.js";
 import { getCurrentPricing } from "./services/pricing.js";
+import notificationRoutes from "./routes/notifications.js";
+import { createNotification } from "./services/notifications.js";
 
 await connectDB();
 
@@ -21,6 +23,12 @@ app.use(
 );
 
 app.use(express.json());
+
+/* =========================
+   NOTIFICATIONS
+========================= */
+
+app.use("/api/notifications", notificationRoutes);
 
 /* =========================
    BASIC
@@ -39,7 +47,6 @@ app.get("/api/health", (req, res) => {
     message: "Backend is healthy",
   });
 });
-
 /* =========================
    AUTH / PROFILE
 ========================= */
@@ -84,6 +91,50 @@ app.patch("/api/auth/profile", requireAuth, async (req, res) => {
   }
 });
 
+/* =========================
+   FCM NOTIFICATIONS
+========================= */
+
+app.post(
+  "/api/notifications/fcm-token",
+  requireAuth,
+  async (req, res) => {
+    try {
+      const { token } = req.body;
+
+      if (!token || typeof token !== "string") {
+        return res.status(400).json({
+          success: false,
+          error: "FCM token is required",
+        });
+      }
+
+      if (!Array.isArray(req.user.fcmTokens)) {
+        req.user.fcmTokens = [];
+      }
+
+      if (!req.user.fcmTokens.includes(token)) {
+        req.user.fcmTokens.push(token);
+        await req.user.save();
+      }
+
+      res.json({
+        success: true,
+        message: "FCM token registered",
+      });
+    } catch (error) {
+      console.error(
+        "Register FCM token error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to register FCM token",
+      });
+    }
+  }
+);
 /* =========================
    PRICING
 ========================= */
@@ -280,6 +331,10 @@ app.get(
    ADMIN ORDER STATUS
 ========================= */
 
+/* =========================
+   ADMIN ORDER STATUS
+========================= */
+
 app.patch(
   "/api/orders/:id/status",
   requireAuth,
@@ -304,20 +359,85 @@ app.patch(
         });
       }
 
-      const order = await Order.findByIdAndUpdate(
-        req.params.id,
-        {
-          status,
-        },
-        {
-          new: true,
-          runValidators: true,
-        }
-      );
+      const order = await Order.findById(req.params.id);
 
       if (!order) {
         return res.status(404).json({
           error: "Order not found",
+        });
+      }
+
+      const previousStatus = order.status;
+
+      // Don't create a notification if nothing actually changed
+      if (previousStatus === status) {
+        return res.json({
+          success: true,
+          order,
+        });
+      }
+
+      order.status = status;
+
+      await order.save();
+
+      const notifications = {
+        ACCEPTED: {
+          title: "Order accepted",
+          message:
+            "Your delivery request has been accepted and is being processed.",
+          type: "ORDER_ACCEPTED",
+        },
+
+        SHOPPING: {
+          title: "Shopping started",
+          message:
+            "We're now shopping for the items in your order.",
+          type: "ORDER_UPDATED",
+        },
+
+        OUT_FOR_DELIVERY: {
+          title: "Your order is on the way",
+          message:
+            "Your order has been collected and is now out for delivery.",
+          type: "OUT_FOR_DELIVERY",
+        },
+
+        COMPLETED: {
+          title: "Order delivered",
+          message:
+            "Your order has been delivered successfully.",
+          type: "DELIVERED",
+        },
+
+        CANCELLED: {
+          title: "Order cancelled",
+          message:
+            "Your delivery request has been cancelled.",
+          type: "CANCELLED",
+        },
+
+        REJECTED: {
+          title: "Order declined",
+          message:
+            "Unfortunately, your delivery request could not be accepted.",
+          type: "CANCELLED",
+        },
+      };
+
+      const notification = notifications[status];
+
+      if (notification) {
+        await createNotification({
+          userId: order.customer,
+          title: notification.title,
+          message: notification.message,
+          type: notification.type,
+          orderId: order._id,
+          data: {
+            status,
+            previousStatus,
+          },
         });
       }
 

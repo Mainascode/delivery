@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["CUSTOMER", "ADMIN"],
       default: "CUSTOMER"
+    },
+
+    fcmTokens: {
+      type: [String],
+      default: []
     }
   },
   {

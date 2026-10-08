@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import NotificationPermission from "./NotificationPermission.jsx";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -20,18 +21,36 @@ export default function Settings() {
     } catch (err) {
       console.error("Logout failed:", err);
 
-      setError(err.message || "Unable to log out. Please try again.");
+      setError(
+        err.message || "Unable to log out. Please try again."
+      );
     } finally {
       setLoggingOut(false);
     }
   }
 
-  const name = profile?.name || user?.displayName || "Not set";
-  const email = user?.email || profile?.email || "Not set";
-  const phone = profile?.phone || "Not set";
+  const name =
+    profile?.name ||
+    user?.displayName ||
+    "Not set";
 
-  // Check both profile and Firebase user, and accept ADMIN/admin
-  const role = String(profile?.role || user?.role || "").toUpperCase();
+  const email =
+    user?.email ||
+    profile?.email ||
+    "Not set";
+
+  const phone =
+    profile?.phone ||
+    "Not set";
+
+  // Check both profile and Firebase user.
+  // Accept ADMIN/admin.
+  const role = String(
+    profile?.role ||
+      user?.role ||
+      ""
+  ).toUpperCase();
+
   const isAdmin = role === "ADMIN";
 
   return (
@@ -39,12 +58,15 @@ export default function Settings() {
       {/* HEADER */}
       <div className="page-header">
         <div>
-          <div className="eyebrow">ACCOUNT</div>
+          <div className="eyebrow">
+            ACCOUNT
+          </div>
 
           <h1>Settings</h1>
 
           <p className="page-description">
-            Manage your NITUME account and sign-in details.
+            Manage your NITUME account,
+            notifications and sign-in details.
           </p>
         </div>
       </div>
@@ -54,7 +76,9 @@ export default function Settings() {
         <section className="settings-card">
           <div className="settings-card-header">
             <div>
-              <div className="eyebrow">YOUR DETAILS</div>
+              <div className="eyebrow">
+                YOUR DETAILS
+              </div>
 
               <h2>Account information</h2>
             </div>
@@ -82,18 +106,41 @@ export default function Settings() {
           </div>
         </section>
 
+        {/* NOTIFICATIONS */}
+        <section className="settings-card">
+          <div className="settings-card-header">
+            <div>
+              <div className="eyebrow">
+                NOTIFICATIONS
+              </div>
+
+              <h2>Order updates</h2>
+
+              <p>
+                Get notified when your NITUME request
+                is accepted, shopping starts, or your
+                order is out for delivery.
+              </p>
+            </div>
+          </div>
+
+          <NotificationPermission />
+        </section>
+
         {/* OPERATOR DASHBOARD — ADMIN ONLY */}
         {isAdmin && (
           <section className="settings-card operator-settings-card">
             <div className="settings-card-header">
               <div>
-                <div className="eyebrow">ADMINISTRATION</div>
+                <div className="eyebrow">
+                  ADMINISTRATION
+                </div>
 
                 <h2>Operator dashboard</h2>
 
                 <p>
-                  Manage customer requests, orders, pricing and NITUME
-                  operations.
+                  Manage customer requests, orders,
+                  pricing and NITUME operations.
                 </p>
               </div>
             </div>
@@ -112,12 +159,15 @@ export default function Settings() {
         <section className="settings-card settings-danger">
           <div className="settings-card-header">
             <div>
-              <div className="eyebrow">ACCOUNT ACTIONS</div>
+              <div className="eyebrow">
+                ACCOUNT ACTIONS
+              </div>
 
               <h2>Sign out</h2>
 
               <p>
-                Sign out of this NITUME account on this device.
+                Sign out of this NITUME account on
+                this device.
               </p>
             </div>
           </div>
@@ -134,19 +184,24 @@ export default function Settings() {
             onClick={handleLogout}
             disabled={loggingOut}
           >
-            {loggingOut ? "Logging out..." : "Log out"}
+            {loggingOut
+              ? "Logging out..."
+              : "Log out"}
           </button>
         </section>
 
         {/* APP INFORMATION */}
         <section className="settings-card">
-          <div className="eyebrow">NITUME</div>
+          <div className="eyebrow">
+            NITUME
+          </div>
 
           <h2>Shopping & delivery help</h2>
 
           <p>
-            NITUME helps with shopping, errands and local deliveries
-            around Ruaka and Gathigi Estate.
+            NITUME helps with shopping, errands and
+            local deliveries around Ruaka and
+            Gathigi Estate.
           </p>
         </section>
       </div>
