@@ -1,5 +1,4 @@
 import "dotenv/config";
-
 import express from "express";
 import cors from "cors";
 
@@ -328,8 +327,39 @@ app.get(
 );
 
 /* =========================
-   ADMIN ORDER STATUS
+   ADMIN ORDER DETAILS
 ========================= */
+
+app.get(
+  "/api/admin/orders/:id",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const order = await Order.findById(req.params.id)
+        .populate("customer", "name email phone");
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          error: "Order not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        order,
+      });
+    } catch (error) {
+      console.error("Get admin order error:", error);
+
+      res.status(500).json({
+        success: false,
+        error: "Failed to load order",
+      });
+    }
+  }
+);
 
 /* =========================
    ADMIN ORDER STATUS

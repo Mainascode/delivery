@@ -251,10 +251,6 @@ export default function Orders() {
                       KES {order.deliveryFee ?? "—"}
                     </strong>
                   </div>
-
-                  <span className="text-link">
-                    View details →
-                  </span>
                 </div>
               </Link>
             );

@@ -71,6 +71,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-wrap: break-word; /* Prevents long words from causing horizontal scroll */
 }
 
 button,
@@ -124,6 +125,7 @@ h4 {
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: -0.035em;
+  overflow-wrap: break-word; /* Safety net for long headings */
 }
 
 h1 {
@@ -140,6 +142,7 @@ h3 {
 
 p {
   margin: 0;
+  overflow-wrap: break-word;
 }
 
 .eyebrow {
@@ -310,6 +313,7 @@ p {
   border-radius: var(--radius-small);
   font-size: 0.9rem;
   line-height: 1.45;
+  overflow-wrap: break-word;
 }
 
 .alert-error {
@@ -434,7 +438,6 @@ p {
 
 /* =========================================================
    CUSTOMER SIDEBAR
-   THESE MATCH THE CURRENT App.jsx
 ========================================================= */
 
 .sidebar {
@@ -475,6 +478,7 @@ p {
   font-family: "Space Grotesk", sans-serif;
   font-size: 1rem;
   letter-spacing: 0.05em;
+  overflow-wrap: break-word;
 }
 
 .brand-link span {
@@ -498,7 +502,7 @@ p {
 }
 
 .sidebar-user > div:last-child {
-  min-width: 0;
+  min-width: 0; /* Critical for flex child text truncation */
 }
 
 .sidebar-user strong {
@@ -507,6 +511,7 @@ p {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.82rem;
+  min-width: 0;
 }
 
 .sidebar-user span {
@@ -562,6 +567,7 @@ p {
     border-color 180ms ease,
     color 180ms ease,
     transform 180ms ease;
+  min-width: 0;
 }
 
 .sidebar-nav a:hover {
@@ -691,6 +697,10 @@ p {
   color: var(--ink-soft);
   font-size: 0.75rem;
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .topbar-account {
@@ -700,6 +710,7 @@ p {
   color: var(--ink);
   font-size: 0.8rem;
   font-weight: 800;
+  min-width: 0;
 }
 
 .topbar-avatar {
@@ -707,6 +718,7 @@ p {
   height: 36px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 11px;
   background: var(--ink);
   color: var(--white);
@@ -719,6 +731,7 @@ p {
 
 .main-content {
   width: 100%;
+  min-width: 0;
   min-height: calc(100vh - 70px);
   padding: 42px 46px 70px;
 }
@@ -808,6 +821,7 @@ p {
   background: var(--ink);
   color: var(--white);
   box-shadow: var(--shadow);
+  overflow-wrap: break-word;
 }
 
 .hero-card .eyebrow {
@@ -860,6 +874,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .info-card:nth-child(2) {
@@ -901,6 +916,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .empty-card h2,
@@ -958,6 +974,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .order-card-top {
@@ -965,6 +982,10 @@ p {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
+}
+
+.order-card-top > div:first-child {
+  min-width: 0; /* Prevents long titles from pushing the badge */
 }
 
 .order-id {
@@ -975,10 +996,12 @@ p {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  word-break: break-all; /* Prevents long IDs from overflowing */
 }
 
 .order-card h2 {
   font-size: 1.2rem;
+  overflow-wrap: break-word;
 }
 
 .status-badge {
@@ -992,6 +1015,7 @@ p {
   font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .order-meta {
@@ -1036,6 +1060,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .step-indicator {
@@ -1091,6 +1116,7 @@ p {
   background: var(--ink);
   color: var(--white);
   box-shadow: var(--shadow);
+  overflow-wrap: break-word;
 }
 
 .request-summary .eyebrow {
@@ -1152,6 +1178,7 @@ p {
   font-size: 0.86rem;
   font-weight: 600;
   white-space: pre-wrap;
+  overflow-wrap: anywhere; /* Prevents long unbroken text from overflowing */
 }
 
 /* =========================================================
@@ -1168,6 +1195,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .details-profile {
@@ -1183,6 +1211,7 @@ p {
   height: 58px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 17px;
   background: var(--coral);
   color: var(--white);
@@ -1212,6 +1241,7 @@ p {
   padding: 16px;
   border-radius: 13px;
   background: var(--surface-soft);
+  min-width: 0;
 }
 
 .details-list span {
@@ -1245,6 +1275,7 @@ p {
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .settings-card-header {
@@ -1267,6 +1298,10 @@ p {
   border-top: 1px solid var(--line);
 }
 
+.settings-details > div {
+  min-width: 0;
+}
+
 .settings-details span {
   display: block;
   margin-bottom: 6px;
@@ -1279,6 +1314,7 @@ p {
 
 .settings-details strong {
   color: var(--ink);
+  overflow-wrap: break-word;
 }
 
 .verified-badge {
@@ -1290,6 +1326,7 @@ p {
   color: #42674a;
   font-size: 0.76rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 /* =========================================================
@@ -1309,6 +1346,7 @@ p {
   font-family: "Space Grotesk", sans-serif;
   font-size: 1.2rem;
   font-weight: 700;
+  word-break: break-all;
 }
 
 /* =========================================================
@@ -1483,6 +1521,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   border-radius: 13px;
   background: var(--yellow-soft);
   color: var(--coral);
@@ -1493,11 +1532,13 @@ p {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  min-width: 0;
 }
 
 .community-location strong {
   color: var(--ink);
   font-size: 0.9rem;
+  overflow-wrap: break-word;
 }
 
 .community-location span {
@@ -1569,7 +1610,6 @@ p {
 
 /* =========================================================
    ADMIN SHELL
-   Existing admin design preserved
 ========================================================= */
 
 .admin-shell {
@@ -1585,6 +1625,7 @@ p {
 
 .admin-main {
   width: 100%;
+  min-width: 0;
   min-height: 100vh;
   padding: 42px 46px 70px;
 }
@@ -1632,6 +1673,7 @@ p {
   font-family: "Space Grotesk", sans-serif;
   font-size: 17px;
   letter-spacing: 0.08em;
+  overflow-wrap: break-word;
 }
 
 .admin-brand-link span {
@@ -1667,6 +1709,7 @@ p {
 .admin-profile strong {
   display: block;
   font-size: 13px;
+  overflow-wrap: break-word;
 }
 
 .admin-profile span {
@@ -1705,12 +1748,14 @@ p {
     background 180ms ease,
     color 180ms ease,
     transform 180ms ease;
+  min-width: 0;
 }
 
 .admin-nav a span:first-child {
   width: 21px;
   text-align: center;
   font-size: 17px;
+  flex: 0 0 auto;
 }
 
 .admin-nav a:hover {
@@ -1794,6 +1839,7 @@ p {
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow-small);
+  overflow-wrap: break-word;
 }
 
 .stat-card {
@@ -1804,6 +1850,7 @@ p {
   justify-content: space-between;
   padding: 18px;
   border-radius: 19px;
+  min-width: 0;
 }
 
 .stat-card-top {
@@ -1825,6 +1872,7 @@ p {
   height: 35px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 11px;
   background: var(--lavender);
   color: var(--coral);
@@ -1835,6 +1883,7 @@ p {
   margin-top: 15px;
   font-family: "Space Grotesk", sans-serif;
   font-size: 29px;
+  overflow-wrap: break-word;
 }
 
 .stat-link,
@@ -1895,6 +1944,7 @@ p {
   margin-top: 7px;
   font-family: "Space Grotesk", sans-serif;
   font-size: 35px;
+  overflow-wrap: break-word;
 }
 
 .pricing-mode {
@@ -1943,6 +1993,7 @@ p {
   padding: 13px;
   border-radius: 12px;
   background: var(--surface-soft);
+  min-width: 0;
 }
 
 .summary-label {
@@ -1959,6 +2010,7 @@ p {
   margin-top: 6px;
   font-family: "Space Grotesk", sans-serif;
   font-size: 20px;
+  overflow-wrap: break-word;
 }
 
 /* =========================================================
@@ -1975,6 +2027,7 @@ p {
 .admin-order-card {
   padding: 17px;
   border-radius: 16px;
+  overflow-wrap: break-word;
 }
 
 .admin-order-top,
@@ -1985,10 +2038,16 @@ p {
   gap: 15px;
 }
 
+.admin-order-top > div:first-child,
+.admin-order-header > div:first-child {
+  min-width: 0;
+}
+
 .admin-order-top h2,
 .admin-order-header h3 {
   margin: 4px 0 3px;
   font-family: "Space Grotesk", sans-serif;
+  overflow-wrap: break-word;
 }
 
 .order-label,
@@ -1999,6 +2058,7 @@ p {
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  word-break: break-all;
 }
 
 .admin-customer {
@@ -2036,6 +2096,7 @@ p {
   padding: 13px;
   border-radius: 12px;
   background: var(--surface-soft);
+  min-width: 0;
 }
 
 .admin-order-info-grid span {
@@ -2097,6 +2158,7 @@ p {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .admin-status.active,
@@ -2150,6 +2212,7 @@ p {
   width: 52px;
   height: 52px;
   border-radius: 15px;
+  flex: 0 0 auto;
 }
 
 .detail-list {
@@ -2178,6 +2241,7 @@ p {
   font-size: 13px;
   line-height: 1.7;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* =========================================================
@@ -2203,6 +2267,7 @@ p {
   display: flex;
   align-items: flex-start;
   gap: 14px;
+  min-width: 0;
 }
 
 .admin-setting-icon {
@@ -2276,6 +2341,7 @@ p {
   margin-top: 6px;
   color: var(--coral);
   font-family: "Space Grotesk", sans-serif;
+  overflow-wrap: break-word;
 }
 
 /* =========================================================
@@ -2291,6 +2357,7 @@ p {
   border-radius: 12px;
   font-size: 12px;
   font-weight: 600;
+  overflow-wrap: break-word;
 }
 
 .admin-alert-error {
@@ -2406,6 +2473,7 @@ p {
   height: 42px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border: 0;
   border-radius: 11px;
   background: var(--lavender);
@@ -2555,6 +2623,7 @@ p {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
   transition: transform 0.2s ease,
     box-shadow 0.2s ease;
 }
@@ -2628,6 +2697,7 @@ p {
   font-weight: 700;
   font-size: 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .notification-list {
@@ -2668,7 +2738,7 @@ p {
 }
 
 .notification-item-content {
-  min-width: 0;
+  min-width: 0; /* Critical for flex child text truncation */
   flex: 1;
 }
 
@@ -2676,6 +2746,7 @@ p {
   display: block;
   font-size: 13px;
   margin-bottom: 4px;
+  overflow-wrap: break-word;
 }
 
 .notification-item-content p {
@@ -2683,6 +2754,7 @@ p {
   font-size: 12px;
   line-height: 1.45;
   opacity: 0.72;
+  overflow-wrap: break-word;
 }
 
 .notification-item-content small {
@@ -2749,6 +2821,7 @@ p {
 
   .app-content {
     width: 100%;
+    min-width: 0;
     min-height: calc(100vh - var(--mobile-nav-height));
     margin-left: 0;
   }
@@ -2777,10 +2850,12 @@ p {
   .topbar-avatar {
     width: 35px;
     height: 35px;
+    flex: 0 0 auto;
   }
 
   .main-content {
     width: 100%;
+    min-width: 0;
     min-height: calc(100vh - var(--mobile-nav-height));
     margin: 0;
     padding: 24px 17px 40px;
@@ -2859,6 +2934,7 @@ p {
     height: 37px;
     display: grid;
     place-items: center;
+    flex: 0 0 auto;
     margin-top: -18px;
     border: 4px solid var(--paper);
     border-radius: 50%;
@@ -3044,6 +3120,7 @@ p {
     height: 38px;
     display: grid;
     place-items: center;
+    flex: 0 0 auto;
     border: 0;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.08);
@@ -3146,7 +3223,43 @@ p {
    VERY SMALL PHONES
 ========================================================= */
 
-@media (max-width: 430px) { .main-content { padding: 17px 12px 24px; } .customer-topbar { min-height: 60px; padding: 0 12px; } .hero { padding: 24px 17px; } .hero h1 { font-size: 2.15rem; } .hero-actions { flex-direction: column; } .hero-actions .btn { width: 100%; } .page-heading { margin-bottom: 20px; } .page-heading h1, .admin-page-heading h1 { font-size: 1.75rem; } .community-card { padding: 18px; } .request-card, .details-card { padding: 17px 14px; } /* Admin */ .admin-content { padding-top: 64px; } .admin-main { padding: 17px 12px 28px; } .admin-mobile-header { height: 64px; } .operator-stats { grid-template-columns: 1fr !important; } .admin-dashboard-stat { padding: 14px; } .admin-dashboard-stat-value { font-size: 1.5rem; } .admin-dashboard-stat-top { margin-bottom: 14px; } .admin-order-card { padding: 16px; } .admin-order-actions { flex-direction: column; } .status-actions { grid-template-columns: 1fr; } .admin-setting-card { padding: 16px; } .admin-setting-left { gap: 9px; } .admin-setting-icon { width: 38px; height: 38px; flex-basis: 38px; } .pricing-hero-card { padding: 18px; } .pricing-hero-price { font-size: 2.2rem; } } /* ========================================================= VERY SMALL PHONES ========================================================= */ @media (max-width: 350px) { .mobile-bottom-nav small { font-size: 0.56rem; } .mobile-bottom-nav a { font-size: 0.9rem; } .admin-main { padding-left: 10px; padding-right: 10px; } .admin-mobile-header { padding-left: 10px; padding-right: 10px; } .admin-mobile-brand strong { font-size: 0.88rem; } .admin-dashboard-stat { padding: 12px; } }
+@media (max-width: 430px) { 
+  .main-content { padding: 17px 12px 24px; } 
+  .customer-topbar { min-height: 60px; padding: 0 12px; } 
+  .hero { padding: 24px 17px; } 
+  .hero h1 { font-size: 2.15rem; } 
+  .hero-actions { flex-direction: column; } 
+  .hero-actions .btn { width: 100%; } 
+  .page-heading { margin-bottom: 20px; } 
+  .page-heading h1, .admin-page-heading h1 { font-size: 1.75rem; } 
+  .community-card { padding: 18px; } 
+  .request-card, .details-card { padding: 17px 14px; } 
+  /* Admin */ 
+  .admin-content { padding-top: 64px; } 
+  .admin-main { padding: 17px 12px 28px; } 
+  .admin-mobile-header { height: 64px; } 
+  .operator-stats { grid-template-columns: 1fr !important; } 
+  .admin-dashboard-stat { padding: 14px; } 
+  .admin-dashboard-stat-value { font-size: 1.5rem; } 
+  .admin-dashboard-stat-top { margin-bottom: 14px; } 
+  .admin-order-card { padding: 16px; } 
+  .admin-order-actions { flex-direction: column; } 
+  .status-actions { grid-template-columns: 1fr; } 
+  .admin-setting-card { padding: 16px; } 
+  .admin-setting-left { gap: 9px; } 
+  .admin-setting-icon { width: 38px; height: 38px; flex-basis: 38px; } 
+  .pricing-hero-card { padding: 18px; } 
+  .pricing-hero-price { font-size: 2.2rem; } 
+} 
+
+@media (max-width: 350px) { 
+  .mobile-bottom-nav small { font-size: 0.56rem; } 
+  .mobile-bottom-nav a { font-size: 0.9rem; } 
+  .admin-main { padding-left: 10px; padding-right: 10px; } 
+  .admin-mobile-header { padding-left: 10px; padding-right: 10px; } 
+  .admin-mobile-brand strong { font-size: 0.88rem; } 
+  .admin-dashboard-stat { padding: 12px; } 
+}
 
 /* =========================================================
    ACCESSIBILITY
@@ -3174,8 +3287,6 @@ p {
 
 /* =========================================================
    NITUME ADMIN DASHBOARD
-   Scoped to .operator-dashboard-page only.
-   These styles intentionally do not alter other pages.
 ========================================================= */
 
 .operator-dashboard-page {
@@ -3439,6 +3550,7 @@ p {
 .operator-dashboard-page .admin-dashboard-stat-arrow {
   color: var(--muted, #756b80);
   font-size: 1rem;
+  flex: 0 0 auto;
 }
 
 .operator-dashboard-page .admin-dashboard-stat-value {
@@ -3509,6 +3621,7 @@ p {
   font-size: 0.76rem;
   font-weight: 800;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .operator-dashboard-page .card-link:hover {
@@ -3589,6 +3702,7 @@ p {
 .operator-dashboard-page .admin-dashboard-order-side strong {
   font-family: "Space Grotesk", sans-serif;
   font-size: 0.85rem;
+  overflow-wrap: break-word;
 }
 
 .operator-dashboard-page .admin-dashboard-order-side span {
@@ -3608,6 +3722,7 @@ p {
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.05em;
+  word-break: break-all;
 }
 
 .operator-dashboard-page .status-badge {
@@ -3624,6 +3739,7 @@ p {
   font-weight: 850;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .operator-dashboard-page .status-badge.status-active {
@@ -3657,6 +3773,7 @@ p {
   height: 50px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   margin-bottom: 13px;
   border-radius: 50%;
   background: #e8f5eb;
@@ -3724,6 +3841,7 @@ p {
   height: 36px;
   display: grid;
   place-items: center;
+  flex: 0 0 auto;
   border-radius: 10px;
   background: var(--lavender, #f3edff);
   color: var(--coral, #7c3aed);
@@ -3755,6 +3873,7 @@ p {
 .operator-dashboard-page .admin-dashboard-action > span:last-child {
   color: var(--coral, #7c3aed);
   font-weight: 900;
+  flex: 0 0 auto;
 }
 
 .operator-dashboard-page .admin-dashboard-mini-summary {
@@ -3785,6 +3904,7 @@ p {
   margin-top: 3px;
   font-family: "Space Grotesk", sans-serif;
   font-size: 1.05rem;
+  overflow-wrap: break-word;
 }
 
 .operator-dashboard-page .operator-summary-card {
@@ -3953,6 +4073,7 @@ p {
   color: var(--ink-soft, #40354b);
   font-size: 0.78rem;
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .admin-detail-two-column {
@@ -4033,6 +4154,8 @@ p {
   cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease,
     color 160ms ease, transform 160ms ease;
+  overflow-wrap: break-word;
+  text-align: center;
 }
 
 .admin-status-button:hover:not(:disabled) {
@@ -4291,4 +4414,3 @@ p {
     animation: none;
   }
 }
-

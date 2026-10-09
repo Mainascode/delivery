@@ -183,7 +183,7 @@ async function loadOrder() {
   try {
     // Our current backend exposes:
     // GET /api/orders/:id
-    const data = await api(`/api/orders/${id}`);
+   const data = await api(`/api/admin/orders/${id}`);
 
     if (mounted) {
       setOrder(data.order || null);
