@@ -163,7 +163,6 @@ return (
         />
       </label>
 
-```jsx
 <label className="field">
   <span>Password</span>
 
