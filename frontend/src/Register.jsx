@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -56,30 +57,24 @@ export default function Register({ onLogin }) {
     try {
       setLoading(true);
 
-      // Create Firebase account
-      const credential =
-        await createUserWithEmailAndPassword(
-          auth,
-          cleanEmail,
-          password
-        );
+      // 1. Create the Firebase account.
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        cleanEmail,
+        password
+      );
 
       const firebaseUser = credential.user;
 
-      // Save display name in Firebase
+      // 2. Save the display name in Firebase.
       await updateProfile(firebaseUser, {
         displayName: cleanName,
       });
 
-      // Get a fresh Firebase ID token
+      // 3. Obtain a fresh Firebase ID token.
       const idToken = await firebaseUser.getIdToken(true);
 
-      /*
-       * Send the authenticated user to the backend.
-       *
-       * The backend decides whether this account is CUSTOMER
-       * or ADMIN based on the approved admin email list.
-       */
+      // 4. Save the user's profile in the Render backend.
       const result = await api("/api/auth/profile", {
         method: "PATCH",
         headers: {
@@ -91,44 +86,37 @@ export default function Register({ onLogin }) {
         }),
       });
 
-      console.log("Registration successful:", result);
-
       const registeredProfile = result.user;
+
+      console.log("Registration successful:", result);
 
       setMessage("Account created successfully.");
 
-      /*
-       * If the backend says this is an ADMIN account,
-       * let the application know.
-       */
+      // 5. Update authentication state and navigate.
       if (onLogin) {
         onLogin(registeredProfile?.role || "CUSTOMER");
-      } else {
-        navigate("/", { replace: true });
       }
+
+      navigate(
+        registeredProfile?.role === "ADMIN" ? "/operator" : "/",
+        { replace: true }
+      );
     } catch (err) {
       console.error("Registration error:", err);
 
-      let errorMessage =
-        "Unable to create your account.";
+      let errorMessage = "Unable to create your account.";
 
       if (err.code === "auth/email-already-in-use") {
         errorMessage =
           "An account with this email already exists. Please sign in.";
       } else if (err.code === "auth/invalid-email") {
-        errorMessage =
-          "Please enter a valid email address.";
+        errorMessage = "Please enter a valid email address.";
       } else if (err.code === "auth/weak-password") {
-        errorMessage =
-          "Please choose a stronger password.";
-      } else if (
-        err.code === "auth/operation-not-allowed"
-      ) {
+        errorMessage = "Please choose a stronger password.";
+      } else if (err.code === "auth/operation-not-allowed") {
         errorMessage =
           "Email and password sign-up is not enabled in Firebase.";
-      } else if (
-        err.code === "auth/network-request-failed"
-      ) {
+      } else if (err.code === "auth/network-request-failed") {
         errorMessage =
           "Network error. Check your internet connection and try again.";
       } else if (err.message) {
@@ -149,7 +137,6 @@ export default function Register({ onLogin }) {
 
           <div>
             <div className="brand-name">NITUME</div>
-
             <div className="brand-location">
               RUAKA · GATHIGI ESTATE
             </div>
@@ -158,7 +145,6 @@ export default function Register({ onLogin }) {
 
         <div className="auth-heading">
           <div className="eyebrow">GET STARTED</div>
-
           <h1>Need a hand?</h1>
 
           <p className="auth-subtitle">
@@ -168,13 +154,13 @@ export default function Register({ onLogin }) {
         </div>
 
         {error && (
-          <div className="alert alert-error">
+          <div className="alert alert-error" role="alert">
             {error}
           </div>
         )}
 
         {message && (
-          <div className="alert alert-success">
+          <div className="alert alert-success" role="status">
             {message}
           </div>
         )}
@@ -187,11 +173,10 @@ export default function Register({ onLogin }) {
               type="text"
               placeholder="Your full name"
               value={name}
-              onChange={(event) =>
-                setName(event.target.value)
-              }
+              onChange={(event) => setName(event.target.value)}
               autoComplete="name"
               autoCapitalize="words"
+              required
               disabled={loading}
             />
           </label>
@@ -201,12 +186,11 @@ export default function Register({ onLogin }) {
 
             <input
               type="tel"
-              placeholder="07XX XXX XXX"
+              placeholder="+254 7XX XXX XXX"
               value={phone}
-              onChange={(event) =>
-                setPhone(event.target.value)
-              }
+              onChange={(event) => setPhone(event.target.value)}
               autoComplete="tel"
+              required
               disabled={loading}
             />
           </label>
@@ -216,14 +200,13 @@ export default function Register({ onLogin }) {
 
             <input
               type="email"
-              placeholder="you@example.com"
+              placeholder="you@gmail.com"
               value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
+              onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               autoCapitalize="none"
               autoCorrect="off"
+              required
               disabled={loading}
             />
           </label>
@@ -235,10 +218,10 @@ export default function Register({ onLogin }) {
               type="password"
               placeholder="Create a password"
               value={password}
-              onChange={(event) =>
-                setPassword(event.target.value)
-              }
+              onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
+              minLength={6}
+              required
               disabled={loading}
             />
           </label>
@@ -254,6 +237,8 @@ export default function Register({ onLogin }) {
                 setConfirmPassword(event.target.value)
               }
               autoComplete="new-password"
+              minLength={6}
+              required
               disabled={loading}
             />
           </label>
@@ -263,18 +248,13 @@ export default function Register({ onLogin }) {
             className="btn btn-primary btn-block"
             disabled={loading}
           >
-            {loading
-              ? "Creating account..."
-              : "Create account"}
+            {loading ? "Creating account..." : "Create account"}
           </button>
         </form>
 
         <div className="auth-note">
           Already have an account?{" "}
-          <Link
-            to="/login"
-            className="text-link"
-          >
+          <Link to="/login" className="text-link">
             Sign in
           </Link>
         </div>
@@ -287,5 +267,3 @@ export default function Register({ onLogin }) {
     </div>
   );
 }
-
-
