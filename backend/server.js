@@ -777,5 +777,5 @@ START SERVER
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-console.log(`NITUME backend running on http://localhost:${PORT}`);
+console.log(`NITUME backend running on https://delivery-y1yc.onrender.com`);
 });
