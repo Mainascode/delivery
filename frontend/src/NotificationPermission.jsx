@@ -261,11 +261,6 @@ export default function NotificationPermission() {
           {status === "enabling" ? "Enabling…" : "Enable notifications"}
         </button>
       )}
-
-      <p className="notification-permission-note">
-        Push notification preferences apply to your account, not just this
-        device. Your browser must also allow notifications for this site.
-      </p>
     </div>
   );
 }
