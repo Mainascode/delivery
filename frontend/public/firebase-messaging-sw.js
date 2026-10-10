@@ -13,7 +13,7 @@ firebase.initializeApp({
   authDomain: "delivery-app-7116c.firebaseapp.com",
   projectId: "delivery-app-7116c",
   storageBucket: "delivery-app-7116c.firebasestorage.app",
-  messagingSenderId: "123456789",
+  messagingSenderId: "390146637598",
   appId: "1:390146637598:web:cf51b769a545f5ebfd930f",
 });
 
