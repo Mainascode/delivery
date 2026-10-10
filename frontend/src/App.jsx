@@ -328,6 +328,18 @@ return ( <div className="app-shell">
       <small>Settings</small>
     </NavLink>
 
+    {String(profile?.role || "").toUpperCase() === "ADMIN" && (
+      <NavLink
+        to="/operator"
+        className={({ isActive }) =>
+          isActive ? "active" : ""
+        }
+      >
+        <span>▣</span>
+        <small>Operator</small>
+      </NavLink>
+    )}
+
   </nav>
 </div>
 

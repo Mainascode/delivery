@@ -31,13 +31,6 @@ export default function Community() {
         {/* Header */}
         <div className="community-heading">
           <div className="eyebrow">NITUME / COMMUNITY</div>
-
-          <h1>
-            Built for your
-            <br />
-            <span>neighbourhood.</span>
-          </h1>
-
           <p>
             NITUME connects local people with the everyday shopping and
             errands they need handled around Ruaka and Gathigi Estate.

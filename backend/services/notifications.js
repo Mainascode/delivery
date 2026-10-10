@@ -1,8 +1,16 @@
+
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import { getFirebaseAdmin } from "../config/firebaseAdmin.js";
 import { getMessaging } from "firebase-admin/messaging";
 
+/**
+ * Create and save a notification, then attempt to send
+ * a Firebase Cloud Messaging push notification.
+ *
+ * A push failure must not prevent the database
+ * notification from being created.
+ */
 export async function createNotification({
   userId,
   title,
@@ -17,24 +25,34 @@ export async function createNotification({
     );
   }
 
-  // Always save the notification to MongoDB first.
+  if (
+    typeof title !== "string" ||
+    !title.trim() ||
+    typeof message !== "string" ||
+    !message.trim()
+  ) {
+    throw new Error(
+      "A notification title and message are required"
+    );
+  }
+
+  // Save the notification first.
   const notification = await Notification.create({
     user: userId,
-    title,
-    message,
+    title: title.trim(),
+    message: message.trim(),
     type,
     order: orderId,
     data,
   });
 
-  // Try sending the push notification.
-  // Push failure should NOT prevent the database
-  // notification from being created.
+  // Attempt push delivery without losing the saved
+  // notification if Firebase is unavailable.
   try {
     await sendPushNotification({
       userId,
-      title,
-      message,
+      title: title.trim(),
+      message: message.trim(),
       type,
       orderId,
       data,
@@ -49,6 +67,10 @@ export async function createNotification({
   return notification;
 }
 
+/**
+ * Send a push notification to all registered devices
+ * belonging to a user.
+ */
 export async function sendPushNotification({
   userId,
   title,
@@ -57,104 +79,138 @@ export async function sendPushNotification({
   orderId = null,
   data = {},
 }) {
-  const firebaseApp = getFirebaseAdmin();
+  try {
+    const firebaseApp = getFirebaseAdmin();
 
-  if (!firebaseApp) {
-    console.log(
-      "Skipping FCM push: Firebase Admin is not configured."
+    if (!firebaseApp) {
+      console.log(
+        "Skipping FCM push: Firebase Admin is not configured."
+      );
+
+      return {
+        success: false,
+        skipped: true,
+        reason: "firebase_not_configured",
+      };
+    }
+
+    const user = await User.findById(userId).select(
+      "fcmTokens"
     );
 
-    return {
-      success: false,
-      skipped: true,
-      reason: "firebase_not_configured",
-    };
-  }
+    if (!user) {
+      console.log(
+        `Skipping FCM push: user ${userId} not found.`
+      );
 
-  const user = await User.findById(userId).select(
-    "fcmTokens"
-  );
+      return {
+        success: false,
+        skipped: true,
+        reason: "user_not_found",
+      };
+    }
 
-  if (!user) {
-    console.log(
-      `Skipping FCM push: user ${userId} not found.`
-    );
-
-    return {
-      success: false,
-      skipped: true,
-      reason: "user_not_found",
-    };
-  }
-
-  const tokens = Array.isArray(user.fcmTokens)
-    ? user.fcmTokens.filter(Boolean)
-    : [];
-
-  if (tokens.length === 0) {
-    console.log(
-      `No FCM tokens registered for user ${userId}.`
-    );
-
-    return {
-      success: false,
-      skipped: true,
-      reason: "no_tokens",
-    };
-  }
-
-  const messaging = getMessaging(firebaseApp);
-
-  const messagePayload = {
-    notification: {
-      title,
-      body: message,
-    },
-
-    data: {
-      type: String(type || "SYSTEM"),
-      orderId: orderId
-        ? String(orderId)
-        : "",
-      url: orderId
-        ? `/orders/${orderId}`
-        : "/",
-      title: String(title),
-      body: String(message),
-
-      ...Object.fromEntries(
-        Object.entries(data || {}).map(
-          ([key, value]) => [
-            key,
-            String(value),
-          ]
-        )
+    const tokens = [
+      ...new Set(
+        Array.isArray(user.fcmTokens)
+          ? user.fcmTokens.filter(
+              (token) =>
+                typeof token === "string" &&
+                token.trim().length > 0
+            )
+          : []
       ),
-    },
+    ];
 
-    tokens,
-  };
+    if (tokens.length === 0) {
+      console.log(
+        `No FCM tokens registered for user ${userId}.`
+      );
 
-  const response =
-    await messaging.sendEachForMulticast(
-      messagePayload
+      return {
+        success: false,
+        skipped: true,
+        reason: "no_tokens",
+      };
+    }
+
+    // Firebase data payload values must be strings.
+    // Exclude reserved keys so custom data cannot
+    // overwrite notification fields.
+    const reservedKeys = new Set([
+      "type",
+      "orderId",
+      "url",
+      "title",
+      "body",
+    ]);
+
+    const extraData = Object.fromEntries(
+      Object.entries(
+        data && typeof data === "object" && !Array.isArray(data)
+          ? data
+          : {}
+      )
+        .filter(
+          ([key, value]) =>
+            !reservedKeys.has(key) &&
+            value !== null &&
+            value !== undefined
+        )
+        .map(([key, value]) => {
+          let stringValue;
+
+          if (typeof value === "string") {
+            stringValue = value;
+          } else {
+            stringValue = JSON.stringify(value);
+          }
+
+          return [key, stringValue];
+        })
+        .filter(([, value]) => value !== undefined)
     );
 
-  console.log(
-    `FCM sent: ${response.successCount}/${tokens.length}`
-  );
+    const messagePayload = {
+      notification: {
+        title,
+        body: message,
+      },
 
-  // Remove tokens that Firebase says are no longer valid.
-  const invalidTokens = [];
+      data: {
+        ...extraData,
+        type: String(type || "SYSTEM"),
+        orderId: orderId ? String(orderId) : "",
+        url: orderId
+          ? `/orders/${orderId}`
+          : "/",
+        title: String(title),
+        body: String(message),
+      },
 
-  response.responses.forEach(
-    (result, index) => {
+      tokens,
+    };
+
+    const messaging = getMessaging(firebaseApp);
+
+    const response =
+      await messaging.sendEachForMulticast(
+        messagePayload
+      );
+
+    console.log(
+      `FCM sent: ${response.successCount}/${tokens.length}`
+    );
+
+    // Remove tokens that Firebase confirms are invalid.
+    const invalidTokens = [];
+
+    response.responses.forEach((result, index) => {
       if (result.success) {
         return;
       }
 
-      const errorCode =
-        result.error?.code;
+      const errorCode = result.error?.code;
 
       if (
         errorCode ===
@@ -166,32 +222,42 @@ export async function sendPushNotification({
       }
 
       console.error(
-        `FCM token error (${errorCode}):`,
-        result.error?.message
+        `FCM token error (${errorCode || "unknown"}):`,
+        result.error?.message || "Unknown Firebase error"
+      );
+    });
+
+    if (invalidTokens.length > 0) {
+      await User.updateOne(
+        { _id: userId },
+        {
+          $pull: {
+            fcmTokens: {
+              $in: invalidTokens,
+            },
+          },
+        }
+      );
+
+      console.log(
+        `Removed ${invalidTokens.length} invalid FCM token(s).`
       );
     }
-  );
 
-  if (invalidTokens.length > 0) {
-    await User.updateOne(
-      { _id: userId },
-      {
-        $pull: {
-          fcmTokens: {
-            $in: invalidTokens,
-          },
-        },
-      }
+    return {
+      success: response.successCount > 0,
+      successCount: response.successCount,
+      failureCount: response.failureCount,
+    };
+  } catch (error) {
+    console.error(
+      "Firebase push delivery error:",
+      error.message
     );
 
-    console.log(
-      `Removed ${invalidTokens.length} invalid FCM token(s).`
-    );
+    return {
+      success: false,
+      error: error.message,
+    };
   }
-
-  return {
-    success: response.successCount > 0,
-    successCount: response.successCount,
-    failureCount: response.failureCount,
-  };
 }

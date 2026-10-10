@@ -115,16 +115,11 @@ export default function Settings() {
               </div>
 
               <h2>Order updates</h2>
-
-              <p>
-                Get notified when your NITUME request
-                is accepted, shopping starts, or your
-                order is out for delivery.
-              </p>
             </div>
           </div>
-
           <NotificationPermission />
+        
+
         </section>
 
         {/* OPERATOR DASHBOARD — ADMIN ONLY */}
