@@ -18,6 +18,8 @@ export default function Register({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -211,20 +213,68 @@ export default function Register({ onLogin }) {
             />
           </label>
 
-          <label className="field">
-            <span>Password</span>
+<label className="field">
+  <span>Password</span>
 
-            <input
-              type="password"
-              placeholder="Create a password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
-              minLength={6}
-              required
-              disabled={loading}
-            />
-          </label>
+  <div className="password-input-wrap">
+    <input
+      type={showPassword ? "text" : "password"}
+      placeholder="Create a password"
+      value={password}
+      onChange={(event) => setPassword(event.target.value)}
+      autoComplete="new-password"
+      minLength={6}
+      required
+      disabled={loading}
+    />
+
+    <button
+      type="button"
+      className="password-toggle"
+      onClick={() => setShowPassword((visible) => !visible)}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+      aria-pressed={showPassword}
+      disabled={loading}
+    >
+      {showPassword ? "Hide" : "Show"}
+    </button>
+  </div>
+</label>
+
+<label className="field">
+  <span>Confirm password</span>
+
+  <div className="password-input-wrap">
+    <input
+      type={showConfirmPassword ? "text" : "password"}
+      placeholder="Enter your password again"
+      value={confirmPassword}
+      onChange={(event) => setConfirmPassword(event.target.value)}
+      autoComplete="new-password"
+      minLength={6}
+      required
+      disabled={loading}
+    />
+
+    <button
+      type="button"
+      className="password-toggle"
+      onClick={() =>
+        setShowConfirmPassword((visible) => !visible)
+      }
+      aria-label={
+        showConfirmPassword
+          ? "Hide confirm password"
+          : "Show confirm password"
+      }
+      aria-pressed={showConfirmPassword}
+      disabled={loading}
+    >
+      {showConfirmPassword ? "Hide" : "Show"}
+    </button>
+  </div>
+</label>
+
 
           <label className="field">
             <span>Confirm password</span>

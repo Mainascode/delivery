@@ -4414,3 +4414,92 @@ p {
     animation: none;
   }
 }
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  padding-right: 76px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: transparent;
+  color: var(--purple, #8b5cf6);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease;
+}
+
+.password-toggle:hover {
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid var(--purple, #8b5cf6);
+  outline-offset: 2px;
+}
+
+.password-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .password-toggle {
+    padding: 10px;
+    min-height: 42px;
+  }
+}
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 70px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #555;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+
+.password-toggle:hover {
+  color: #000;
+}
+
+.password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

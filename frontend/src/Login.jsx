@@ -11,6 +11,7 @@ const location = useLocation();
 
 const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
+const [showPassword, setShowPassword] = useState(false);
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
 
@@ -162,19 +163,34 @@ return (
         />
       </label>
 
-      <label className="field">
-        <span>Password</span>
+```jsx
+<label className="field">
+  <span>Password</span>
 
-        <input
-          type="password"
-          placeholder="Enter your password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          required
-          disabled={loading}
-        />
-      </label>
+  <div className="password-input-wrapper">
+    <input
+      type={showPassword ? "text" : "password"}
+      placeholder="Enter your password"
+      value={password}
+      onChange={(event) => setPassword(event.target.value)}
+      autoComplete="current-password"
+      required
+      disabled={loading}
+    />
+
+    <button
+      type="button"
+      className="password-toggle"
+      onClick={() => setShowPassword((prev) => !prev)}
+      disabled={loading}
+      aria-label={showPassword ? "Hide password" : "Show password"}
+      aria-pressed={showPassword}
+    >
+      {showPassword ? "Hide" : "Show"}
+    </button>
+  </div>
+</label>
+
 
       <button
         type="submit"
