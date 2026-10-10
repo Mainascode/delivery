@@ -94,21 +94,25 @@ export async function sendPushNotification({
       };
     }
 
-    const user = await User.findById(userId).select(
-      "fcmTokens"
-    );
+const user = await User.findById(userId).select(
+  "fcmTokens notificationsEnabled"
+);
 
-    if (!user) {
-      console.log(
-        `Skipping FCM push: user ${userId} not found.`
-      );
+if (!user) {
+  return {
+    success: false,
+    skipped: true,
+    reason: "user_not_found",
+  };
+}
 
-      return {
-        success: false,
-        skipped: true,
-        reason: "user_not_found",
-      };
-    }
+if (user.notificationsEnabled !== true) {
+  return {
+    success: false,
+    skipped: true,
+    reason: "notifications_disabled",
+  };
+}
 
     const tokens = [
       ...new Set(

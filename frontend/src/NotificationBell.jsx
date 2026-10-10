@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useNotifications } from "../context/NotificationContext.jsx";
+import { useNotifications } from "./context/NotificationContext.jsx";
 
 export default function NotificationBell() {
   const {

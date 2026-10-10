@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 
 import { requireAuth, requireAdmin } from "./middleware/auth.js";
+import User from "./models/User.js";
 import { connectDB } from "./config/database.js";
 import Order from "./models/Order.js";
 import Settings from "./models/Settings.js";
@@ -101,46 +102,7 @@ res.status(500).json({
 FCM TOKEN REGISTRATION
 ========================= */
 
-app.post(
-"/api/notifications/fcm-token",
-requireAuth,
-async (req, res) => {
-try {
-const { token } = req.body;
-
-
-  if (!token || typeof token !== "string") {
-    return res.status(400).json({
-      success: false,
-      error: "FCM token is required.",
-    });
-  }
-
-  if (!Array.isArray(req.user.fcmTokens)) {
-    req.user.fcmTokens = [];
-  }
-
-  if (!req.user.fcmTokens.includes(token)) {
-    req.user.fcmTokens.push(token);
-    await req.user.save();
-  }
-
-  return res.json({
-    success: true,
-    message: "FCM token registered.",
-  });
-} catch (error) {
-  console.error("Register FCM token error:", error);
-
-  return res.status(500).json({
-    success: false,
-    error: "Failed to register FCM token.",
-  });
-}
-
-
-}
-);
+app.use("/api/notifications", notificationRoutes);
 
 /* =========================
 PRICING
@@ -230,6 +192,31 @@ const order = await Order.create({
   pricingRule: pricing.rule,
   status: "PENDING",
 });
+
+try {
+  const admins = await User.find({ role: "ADMIN" }).select("_id");
+
+  await Promise.allSettled(
+    admins.map((admin) =>
+      createNotification({
+        userId: admin._id,
+        title: "New order received",
+        message: `A new delivery request #${String(order._id).slice(-6)} is waiting for review.`,
+        type: "ORDER_CREATED",
+        orderId: order._id,
+        data: {
+          status: order.status,
+        },
+      })
+    )
+  );
+} catch (notificationError) {
+  // A notification failure must never cancel a successfully created order.
+  console.error(
+    "Failed to notify admins about the new order:",
+    notificationError.message
+  );
+}
 
 return res.status(201).json({
   success: true,
