@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -10,6 +9,21 @@ import {
 import { auth } from "./services/firebase";
 import { api } from "./services/api";
 
+// Accept 07XXXXXXXX or +2547XXXXXXXX.
+function normalizeKenyanPhone(phone) {
+  const number = phone.replace(/[\s()-]/g, "");
+
+  if (/^07\d{8}$/.test(number)) {
+    return `+254${number.slice(1)}`;
+  }
+
+  if (/^\+2547\d{8}$/.test(number)) {
+    return number;
+  }
+
+  return null;
+}
+
 export default function Register({ onLogin }) {
   const navigate = useNavigate();
 
@@ -18,8 +32,10 @@ export default function Register({ onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
-const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,17 +48,24 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     setMessage("");
 
     const cleanName = name.trim();
-    const cleanPhone = phone.trim();
     const cleanEmail = email.trim().toLowerCase();
+    const normalizedPhone = normalizeKenyanPhone(phone);
 
     if (
       !cleanName ||
-      !cleanPhone ||
+      !phone.trim() ||
       !cleanEmail ||
       !password ||
       !confirmPassword
     ) {
       setError("Please fill in all fields.");
+      return;
+    }
+
+    if (!normalizedPhone) {
+      setError(
+        "Enter a valid Kenyan mobile number, e.g. 0712345678 or +254712345678."
+      );
       return;
     }
 
@@ -68,7 +91,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
       const firebaseUser = credential.user;
 
-      // 2. Save the display name in Firebase.
+      // 2. Save the user's display name in Firebase.
       await updateProfile(firebaseUser, {
         displayName: cleanName,
       });
@@ -84,7 +107,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
         },
         body: JSON.stringify({
           name: cleanName,
-          phone: cleanPhone,
+          phone: normalizedPhone,
         }),
       });
 
@@ -100,7 +123,9 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
       }
 
       navigate(
-        registeredProfile?.role === "ADMIN" ? "/operator" : "/",
+        registeredProfile?.role === "ADMIN"
+          ? "/operator"
+          : "/",
         { replace: true }
       );
     } catch (err) {
@@ -188,10 +213,11 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
             <input
               type="tel"
-              placeholder="+254 7XX XXX XXX"
+              placeholder="07XX XXX XXX or +254 7XX XXX XXX"
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
               autoComplete="tel"
+              inputMode="tel"
               required
               disabled={loading}
             />
@@ -213,84 +239,78 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
             />
           </label>
 
-<label className="field">
-  <span>Password</span>
+          <label className="field">
+            <span>Password</span>
 
-  <div className="password-input-wrap">
-    <input
-      type={showPassword ? "text" : "password"}
-      placeholder="Create a password"
-      value={password}
-      onChange={(event) => setPassword(event.target.value)}
-      autoComplete="new-password"
-      minLength={6}
-      required
-      disabled={loading}
-    />
+            <div className="password-input-wrap">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Create a password"
+                value={password}
+                onChange={(event) =>
+                  setPassword(event.target.value)
+                }
+                autoComplete="new-password"
+                minLength={6}
+                required
+                disabled={loading}
+              />
 
-    <button
-      type="button"
-      className="password-toggle"
-      onClick={() => setShowPassword((visible) => !visible)}
-      aria-label={showPassword ? "Hide password" : "Show password"}
-      aria-pressed={showPassword}
-      disabled={loading}
-    >
-      {showPassword ? "Hide" : "Show"}
-    </button>
-  </div>
-</label>
-
-<label className="field">
-  <span>Confirm password</span>
-
-  <div className="password-input-wrap">
-    <input
-      type={showConfirmPassword ? "text" : "password"}
-      placeholder="Enter your password again"
-      value={confirmPassword}
-      onChange={(event) => setConfirmPassword(event.target.value)}
-      autoComplete="new-password"
-      minLength={6}
-      required
-      disabled={loading}
-    />
-
-    <button
-      type="button"
-      className="password-toggle"
-      onClick={() =>
-        setShowConfirmPassword((visible) => !visible)
-      }
-      aria-label={
-        showConfirmPassword
-          ? "Hide confirm password"
-          : "Show confirm password"
-      }
-      aria-pressed={showConfirmPassword}
-      disabled={loading}
-    >
-      {showConfirmPassword ? "Hide" : "Show"}
-    </button>
-  </div>
-</label>
-
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() =>
+                  setShowPassword((visible) => !visible)
+                }
+                aria-label={
+                  showPassword ? "Hide password" : "Show password"
+                }
+                aria-pressed={showPassword}
+                disabled={loading}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </label>
 
           <label className="field">
             <span>Confirm password</span>
 
-            <input
-              type="password"
-              placeholder="Enter your password again"
-              value={confirmPassword}
-              onChange={(event) =>
-                setConfirmPassword(event.target.value)
-              }
-              autoComplete="new-password"
-              minLength={6}
-              required
-              disabled={loading}
-            />
+            <div className="password-input-wrap">
+              <input
+                type={
+                  showConfirmPassword ? "text" : "password"
+                }
+                placeholder="Enter your password again"
+                value={confirmPassword}
+                onChange={(event) =>
+                  setConfirmPassword(event.target.value)
+                }
+                autoComplete="new-password"
+                minLength={6}
+                required
+                disabled={loading}
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() =>
+                  setShowConfirmPassword(
+                    (visible) => !visible
+                  )
+                }
+                aria-label={
+                  showConfirmPassword
+                    ? "Hide confirm password"
+                    : "Show confirm password"
+                }
+                aria-pressed={showConfirmPassword}
+                disabled={loading}
+              >
+                {showConfirmPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
 
           <button
