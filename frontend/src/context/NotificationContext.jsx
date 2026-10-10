@@ -14,7 +14,7 @@ const NotificationContext = createContext(null);
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
-  "http://localhost:5000";
+  "https://delivery-y1yc.onrender.com";
 
 async function getAuthHeaders() {
   const firebaseUser = auth.currentUser;

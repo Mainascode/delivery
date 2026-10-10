@@ -1,7 +1,7 @@
 
 import { auth } from "./firebase";
 
-const API_URL = "http://localhost:5000";
+const API_URL = "https://delivery-y1yc.onrender.com";
 
 export async function api(path, options = {}) {
   const user = auth.currentUser;
