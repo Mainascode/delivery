@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useCallback,
@@ -7,10 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import {
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 
 import { auth } from "../services/firebase";
 import { api } from "../services/api";
@@ -29,21 +25,22 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const data = await api("/api/auth/me");
+      const idToken = await firebaseUser.getIdToken();
 
-      const nextProfile = data.user || null;
+      const data = await api("/api/auth/me", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
 
+      const nextProfile = data?.user || null;
       setProfile(nextProfile);
 
       return nextProfile;
     } catch (error) {
-      console.error(
-        "Profile loading failed:",
-        error.message
-      );
-
+      console.error("Profile loading failed:", error.message);
       setProfile(null);
-
       return null;
     }
   }, []);
@@ -51,24 +48,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      async (firebaseUser) => {
-        if (!mounted) return;
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (!mounted) return;
 
-        setUser(firebaseUser);
+      setUser(firebaseUser);
+      setLoading(true);
 
+      try {
         if (firebaseUser) {
           await loadProfile(firebaseUser);
         } else {
           setProfile(null);
         }
-
+      } finally {
         if (mounted) {
           setLoading(false);
         }
       }
-    );
+    });
 
     return () => {
       mounted = false;
@@ -76,16 +73,16 @@ export function AuthProvider({ children }) {
     };
   }, [loadProfile]);
 
-  async function logout() {
+  const logout = useCallback(async () => {
     try {
       await signOut(auth);
     } finally {
       setUser(null);
       setProfile(null);
     }
-  }
+  }, []);
 
-  async function refreshProfile() {
+  const refreshProfile = useCallback(async () => {
     const firebaseUser = auth.currentUser;
 
     if (!firebaseUser) {
@@ -94,7 +91,7 @@ export function AuthProvider({ children }) {
     }
 
     return loadProfile(firebaseUser);
-  }
+  }, [loadProfile]);
 
   return (
     <AuthContext.Provider
@@ -114,4 +111,3 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   return useContext(AuthContext);
 }
-

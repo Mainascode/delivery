@@ -1,18 +1,22 @@
-
 import { auth } from "./firebase";
 
-const API_URL = "https://delivery-y1yc.onrender.com";
+const API_URL = (
+  import.meta.env.VITE_API_URL ||
+  "https://delivery-y1yc.onrender.com"
+).replace(/\/+$/, "");
 
 export async function api(path, options = {}) {
   const user = auth.currentUser;
 
   const headers = {
-    "Content-Type": "application/json",
+    ...(options.body instanceof FormData
+      ? {}
+      : { "Content-Type": "application/json" }),
     ...(options.headers || {}),
   };
 
   if (user) {
-    const token = await user.getIdToken(true);
+    const token = await user.getIdToken();
     headers.Authorization = `Bearer ${token}`;
   }
 
@@ -40,4 +44,3 @@ export async function api(path, options = {}) {
 
   return data;
 }
-
