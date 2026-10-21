@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import NitumeApp from "./App.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { NotificationProvider } from "./context/NotificationContext.jsx";
+import ForegroundNotifications from "./ForegroundNotifications.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -12,6 +13,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <NotificationProvider>
           <NitumeApp />
+          <ForegroundNotifications />
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
