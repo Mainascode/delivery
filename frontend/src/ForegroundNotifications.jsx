@@ -1,19 +1,41 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { useNotifications } from "./context/NotificationContext";
 import { listenForForegroundMessages } from "./services/fcm";
+import "./ForegroundNotifications.css";
+
+const getNotificationIcon = (type = "") => {
+  const value = String(type).toUpperCase();
+
+  if (value.includes("ORDER")) return "📦";
+  if (value.includes("DELIVERY")) return "🛵";
+  if (value.includes("PAYMENT")) return "💳";
+  if (value.includes("COMPLETE")) return "✨";
+  if (value.includes("CANCEL")) return "⚠️";
+  if (value.includes("PROMO")) return "🎉";
+
+  return "🔔";
+};
 
 export default function ForegroundNotifications() {
   const { user } = useAuth();
+  const { fetchNotifications } = useNotifications();
   const navigate = useNavigate();
+
   const [toast, setToast] = useState(null);
+  const timerRef = useRef(null);
+  const sequenceRef = useRef(0);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setToast(null);
+      return undefined;
+    }
 
     let active = true;
     let unsubscribe = () => {};
-    let toastTimer;
 
     async function startListening() {
       try {
@@ -30,41 +52,32 @@ export default function ForegroundNotifications() {
             payload.data?.body ||
             "You have a new notification.";
 
-          const url = payload.data?.url || "/";
+          const type = payload.data?.type || "SYSTEM";
+          const rawUrl = payload.data?.url || "/";
+          const url = rawUrl.startsWith("/") ? rawUrl : "/";
+          const id = ++sequenceRef.current;
 
-          setToast({ title, body, url });
+          clearTimeout(timerRef.current);
 
-          clearTimeout(toastTimer);
-          toastTimer = setTimeout(() => {
+          setToast({
+            id,
+            title,
+            body,
+            type,
+            url,
+            icon: getNotificationIcon(type),
+          });
+
+          timerRef.current = setTimeout(() => {
             if (active) setToast(null);
-          }, 6000);
+          }, 6500);
 
-          // Display a system notification when permission is granted.
-          // Using the service worker is more suitable for supported
-          // mobile browsers and installed web apps.
-          if (
-            "Notification" in window &&
-            Notification.permission === "granted" &&
-            "serviceWorker" in navigator
-          ) {
-            navigator.serviceWorker.ready
-              .then((registration) =>
-                registration.showNotification(title, {
-                  body,
-                  icon: "/favicon.ico",
-                  data: { url },
-                  tag: payload.data?.orderId
-                    ? `nitume-order-${payload.data.orderId}`
-                    : `nitume-${Date.now()}`,
-                })
-              )
-              .catch((error) => {
-                console.error(
-                  "Could not display system notification:",
-                  error
-                );
-              });
-          }
+          // Refresh the saved notification history.
+          // The custom toast below is the only foreground popup:
+          // deliberately do not call showNotification() here.
+          fetchNotifications().catch((error) => {
+            console.error("Could not refresh notifications:", error);
+          });
         });
 
         if (active) {
@@ -73,10 +86,7 @@ export default function ForegroundNotifications() {
           stop();
         }
       } catch (error) {
-        console.error(
-          "Could not start foreground notifications:",
-          error
-        );
+        console.error("Could not start NITUME notifications:", error);
       }
     }
 
@@ -85,126 +95,77 @@ export default function ForegroundNotifications() {
     return () => {
       active = false;
       unsubscribe();
-      clearTimeout(toastTimer);
+      clearTimeout(timerRef.current);
     };
-  }, [user?.uid]);
+  }, [user?.uid, fetchNotifications]);
 
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
+  const dismissToast = () => {
+    clearTimeout(timerRef.current);
+    setToast(null);
+  };
 
-    function handleNotificationClick(event) {
-      const url = event.detail?.url || "/";
-      navigate(url);
-    }
+  const openToast = () => {
+    if (!toast) return;
 
-    // Service worker messages can be used by the app to navigate
-    // when a notification is clicked.
-    navigator.serviceWorker.addEventListener(
-      "message",
-      handleNotificationClick
-    );
-
-    return () => {
-      navigator.serviceWorker.removeEventListener(
-        "message",
-        handleNotificationClick
-      );
-    };
-  }, [navigate]);
+    const url = toast.url;
+    dismissToast();
+    navigate(url);
+  };
 
   if (!toast) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      style={{
-        position: "fixed",
-        top: "max(16px, env(safe-area-inset-top))",
-        right: "16px",
-        left: "16px",
-        zIndex: 99999,
-        maxWidth: "420px",
-        marginLeft: "auto",
-        padding: "16px",
-        borderRadius: "18px",
-        background: "#211638",
-        color: "#ffffff",
-        border: "1px solid rgba(196, 181, 253, 0.35)",
-        boxShadow: "0 14px 40px rgba(20, 10, 40, 0.3)",
-        fontFamily: "inherit",
-      }}
-    >
-      <div style={{ display: "flex", gap: "12px", alignItems: "start" }}>
-        <div
-          aria-hidden="true"
-          style={{
-            width: "40px",
-            height: "40px",
-            flexShrink: 0,
-            display: "grid",
-            placeItems: "center",
-            borderRadius: "13px",
-            background: "#7c3aed",
-            fontSize: "20px",
-          }}
-        >
-          🔔
+    <div className="nitume-toast-region" aria-live="polite" aria-atomic="true">
+      <article
+        key={toast.id}
+        className="nitume-toast"
+        role="status"
+      >
+        <div className="nitume-toast-accent" />
+
+        <div className="nitume-toast-icon" aria-hidden="true">
+          {toast.icon}
+          <span className="nitume-toast-icon-glow" />
         </div>
 
         <button
           type="button"
-          onClick={() => {
-            const url = toast.url;
-            setToast(null);
-            navigate(url);
-          }}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            textAlign: "left",
-            border: 0,
-            padding: 0,
-            background: "transparent",
-            color: "inherit",
-            font: "inherit",
-            cursor: "pointer",
-          }}
+          className="nitume-toast-content"
+          onClick={openToast}
+          aria-label={`${toast.title}. ${toast.body}. Open notification`}
         >
-          <strong style={{ display: "block", marginBottom: "5px" }}>
+          <span className="nitume-toast-brand">
+            <span className="nitume-toast-brand-dot" />
+            NITUME
+            <span className="nitume-toast-time">JUST NOW</span>
+          </span>
+
+          <strong className="nitume-toast-title">
             {toast.title}
           </strong>
-          <span style={{ display: "block", color: "#e9e1f5", fontSize: "14px" }}>
+
+          <span className="nitume-toast-message">
             {toast.body}
           </span>
-          <span
-            style={{
-              display: "block",
-              marginTop: "9px",
-              color: "#c4b5fd",
-              fontSize: "12px",
-              fontWeight: 700,
-            }}
-          >
-            Tap to view
+
+          <span className="nitume-toast-action">
+            View update <span aria-hidden="true">↗</span>
           </span>
         </button>
 
         <button
           type="button"
+          className="nitume-toast-close"
+          onClick={dismissToast}
           aria-label="Dismiss notification"
-          onClick={() => setToast(null)}
-          style={{
-            border: 0,
-            background: "transparent",
-            color: "#ffffff",
-            fontSize: "20px",
-            cursor: "pointer",
-          }}
         >
           ×
         </button>
-      </div>
+
+        <div className="nitume-toast-progress" key={toast.id}>
+          <span />
+        </div>
+      </article>
     </div>
   );
 }
