@@ -506,7 +506,7 @@ app.patch(
         {
           _id: req.params.id,
           customer: req.user._id,
-          status: "OUT_FOR_DELIVERY",
+          status: "READY_FOR_DELIVERY",
           paymentStatus: "UNPAID",
         },
         {
@@ -896,8 +896,8 @@ error: "Invalid order ID.",
   const allowedTransitions = {
     PENDING: ["ACCEPTED", "CANCELLED", "REJECTED"],
     ACCEPTED: ["SHOPPING", "CANCELLED"],
-    SHOPPING: ["OUT_FOR_DELIVERY", "CANCELLED"],
-    OUT_FOR_DELIVERY: ["CANCELLED"],
+    SHOPPING: ["READY_FOR_DELIVERY", "CANCELLED"],
+    READY_FOR_DELIVERY: ["CANCELLED"],
     COMPLETED: [],
     CANCELLED: [],
     REJECTED: [],
@@ -973,11 +973,11 @@ error: "Invalid order ID.",
       message: "We're now shopping for the items in your order.",
       type: "ORDER_UPDATED",
     },
-    OUT_FOR_DELIVERY: {
-      title: "Your order is on the way",
+    READY_FOR_DELIVERY: {
+      title: "Your order is ready for delivery",
       message:
-        "Your order has been collected and is now out for delivery.",
-      type: "OUT_FOR_DELIVERY",
+        "Your order is ready and will be delivered soon.",
+      type: "READY_FOR_DELIVERY",
     },
     COMPLETED: {
       title: "Order delivered",

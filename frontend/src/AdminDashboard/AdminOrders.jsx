@@ -31,7 +31,7 @@ function formatStatus(status = "UNKNOWN") {
 function getStatusClass(status) {
   if (status === "COMPLETED") return "completed";
   if (["CANCELLED", "REJECTED"].includes(status)) return "cancelled";
-  if (["ACCEPTED", "SHOPPING", "OUT_FOR_DELIVERY"].includes(status)) {
+  if (["ACCEPTED", "SHOPPING", "READY_FOR_DELIVERY"].includes(status)) {
     return "active";
   }
   return "pending";
@@ -183,7 +183,7 @@ export default function AdminOrders() {
           <strong>
             {
               orders.filter((order) =>
-                ["ACCEPTED", "SHOPPING", "OUT_FOR_DELIVERY"].includes(order.status)
+                ["ACCEPTED", "SHOPPING", "READY_FOR_DELIVERY"].includes(order.status)
               ).length
             }
           </strong>

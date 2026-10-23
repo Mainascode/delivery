@@ -86,7 +86,7 @@
     transparent 65%
   );
   transform: translateX(-100%);
-  animation: nitume-toast-shimmer 1.5s ease-out 350ms 1;
+  animation: nitume-toast-shimmer 10s ease-out 350ms 1;
   pointer-events: none;
 }
 
@@ -218,7 +218,7 @@
   height: 100%;
   background: linear-gradient(90deg, #7c3aed, #c4b5fd);
   transform-origin: left center;
-  animation: nitume-toast-countdown 6.5s linear forwards;
+  animation: nitume-toast-countdown 10s linear forwards;
 }
 
 /* Entry and progress animations */

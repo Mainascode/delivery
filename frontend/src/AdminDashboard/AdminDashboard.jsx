@@ -17,8 +17,8 @@ const STATUS_OPTIONS = [
     label: "Shopping",
   },
   {
-    value: "OUT_FOR_DELIVERY",
-    label: "Out for delivery",
+    value: "READY_FOR_DELIVERY",
+    label: "Ready for delivery",
   },
   {
     value: "COMPLETED",
@@ -51,7 +51,7 @@ function getStatusClass(status) {
 
     case "ACCEPTED":
     case "SHOPPING":
-    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_DELIVERY":
       return "status-active";
 
     default:

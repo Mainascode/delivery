@@ -7,7 +7,7 @@ const ACTIVE_STATUSES = [
   "PENDING",
   "ACCEPTED",
   "SHOPPING",
-  "OUT_FOR_DELIVERY",
+  "READY_FOR_DELIVERY",
 ];
 
 function formatStatus(status = "PENDING") {
