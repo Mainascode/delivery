@@ -4969,7 +4969,7 @@ p {
   background: rgba(22, 13, 39, 0.62);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  animation: nitume-fade-in 20s ease both;
+  animation: nitume-fade-in 150ms ease both;
 }
 
 .nitume-confirm-modal {
@@ -4983,7 +4983,7 @@ p {
   background: var(--surface, #fff);
   color: var(--text, #211632);
   box-shadow: 0 28px 90px rgba(13, 6, 25, 0.3);
-  animation: nitume-modal-in 20s ease both;
+  animation: nitume-modal-in 180ms ease both;
 }
 
 .nitume-modal-icon {
