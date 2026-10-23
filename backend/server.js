@@ -102,7 +102,7 @@ res.status(500).json({
 FCM TOKEN REGISTRATION
 ========================= */
 
-app.use("/api/notifications", notificationRoutes);
+
 
 /* =========================
 PRICING
@@ -155,6 +155,29 @@ if (
     error: "Items and delivery location are required.",
   });
 }
+
+const activeOrder = await Order.findOne({
+  customer: req.user._id,
+  status: {
+    $in: [
+      "PENDING",
+      "ACCEPTED",
+      "SHOPPING",
+      "OUT_FOR_DELIVERY",
+    ],
+  },
+});
+
+if (activeOrder) {
+  return res.status(409).json({
+    success: false,
+    error:
+      "You already have an active order. Please wait until it is completed or cancelled before placing another.",
+    orderId: String(activeOrder._id),
+    orderStatus: activeOrder.status,
+  });
+}
+
 
 let settings = await Settings.findOne();
 
@@ -269,6 +292,99 @@ return res.status(500).json({
 }
 });
 
+
+/* =========================
+   CUSTOMER: EDIT PENDING ORDER
+========================= */
+
+app.patch("/api/orders/:id", requireAuth, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid order ID.",
+      });
+    }
+
+    const allowedFields = [
+      "items",
+      "pickupLocation",
+      "deliveryLocation",
+      "notes",
+    ];
+
+    const updates = {};
+
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        if (
+          typeof req.body[field] !== "string" ||
+          (field === "items" && !req.body[field].trim()) ||
+          (field === "deliveryLocation" && !req.body[field].trim())
+        ) {
+          return res.status(400).json({
+            success: false,
+            error: `Invalid value for ${field}.`,
+          });
+        }
+
+        updates[field] = req.body[field].trim();
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Provide at least one field to update.",
+      });
+    }
+
+    const order = await Order.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        customer: req.user._id,
+        status: "PENDING",
+      },
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+
+    if (!order) {
+      const existing = await Order.findOne({
+        _id: req.params.id,
+        customer: req.user._id,
+      });
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          error: "Order not found.",
+        });
+      }
+
+      return res.status(409).json({
+        success: false,
+        error:
+          "Only pending orders can be edited. This order may already have been approved.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Order updated successfully.",
+      order,
+    });
+  } catch (error) {
+    console.error("Edit order error:", error);
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update order.",
+    });
+  }
+});
+
+
 /* =========================
 CUSTOMER: CANCEL ORDER
 Only pending orders can be
@@ -364,6 +480,270 @@ error: "Invalid order ID.",
 
 
 }
+);
+
+
+/* =========================
+   CUSTOMER: SUBMIT PAYMENT
+   Customer reports that payment
+   has been made; this is not
+   automatic payment verification.
+========================= */
+
+app.patch(
+  "/api/orders/:id/payment-submitted",
+  requireAuth,
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const order = await Order.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          customer: req.user._id,
+          status: "OUT_FOR_DELIVERY",
+          paymentStatus: "UNPAID",
+        },
+        {
+          $set: {
+            paymentStatus: "CUSTOMER_MARKED_PAID",
+            paymentSubmittedAt: new Date(),
+          },
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!order) {
+        const existing = await Order.findOne({
+          _id: req.params.id,
+          customer: req.user._id,
+        });
+
+        if (!existing) {
+          return res.status(404).json({
+            success: false,
+            error: "Order not found.",
+          });
+        }
+
+        return res.status(409).json({
+          success: false,
+          error:
+            existing.paymentStatus === "CONFIRMED"
+              ? "Payment has already been confirmed."
+              : existing.status !== "OUT_FOR_DELIVERY"
+                ? "Payment can only be submitted when your order is out for delivery."
+                : "Payment has already been submitted for confirmation.",
+        });
+      }
+
+      const admins = await User.find({ role: "ADMIN" }).select("_id");
+
+      await Promise.allSettled(
+        admins.map((admin) =>
+          createNotification({
+            userId: admin._id,
+            title: "Payment submitted",
+            message: `Customer reports payment for order #${String(order._id).slice(-6)}. Please verify receipt.`,
+            type: "PAYMENT_SUBMITTED",
+            orderId: order._id,
+            data: { paymentStatus: order.paymentStatus },
+          })
+        )
+      );
+
+      return res.json({
+        success: true,
+        message: "Payment submitted for confirmation.",
+        order,
+      });
+    } catch (error) {
+      console.error("Payment submission error:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to submit payment.",
+      });
+    }
+  }
+);
+
+
+/* =========================
+   ADMIN: CONFIRM PAYMENT
+========================= */
+
+app.patch(
+  "/api/orders/:id/payment-confirmation",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const order = await Order.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          status: "OUT_FOR_DELIVERY",
+          paymentStatus: "CUSTOMER_MARKED_PAID",
+        },
+        {
+          $set: {
+            paymentStatus: "CONFIRMED",
+            paymentConfirmedAt: new Date(),
+            paymentConfirmedBy: req.user._id,
+          },
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!order) {
+        const existing = await Order.findById(req.params.id);
+
+        if (!existing) {
+          return res.status(404).json({
+            success: false,
+            error: "Order not found.",
+          });
+        }
+
+        return res.status(409).json({
+          success: false,
+          error:
+            existing.paymentStatus === "CONFIRMED"
+              ? "Payment is already confirmed."
+              : "Payment can only be confirmed after the customer submits it and the order is out for delivery.",
+        });
+      }
+
+      await createNotification({
+        userId: order.customer,
+        title: "Payment confirmed",
+        message:
+          "Your payment has been confirmed. You can now mark your order as complete.",
+        type: "PAYMENT_CONFIRMED",
+        orderId: order._id,
+        data: {
+          paymentStatus: order.paymentStatus,
+          status: order.status,
+        },
+      }).catch((error) => {
+        console.error("Payment confirmation notification error:", error);
+      });
+
+      return res.json({
+        success: true,
+        message: "Payment confirmed.",
+        order,
+      });
+    } catch (error) {
+      console.error("Payment confirmation error:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to confirm payment.",
+      });
+    }
+  }
+);
+
+
+/* =========================
+   CUSTOMER: COMPLETE ORDER
+   Requires delivery + confirmed payment
+========================= */
+
+app.patch(
+  "/api/orders/:id/complete",
+  requireAuth,
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const order = await Order.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          customer: req.user._id,
+          status: "OUT_FOR_DELIVERY",
+          paymentStatus: "CONFIRMED",
+        },
+        {
+          $set: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!order) {
+        const existing = await Order.findOne({
+          _id: req.params.id,
+          customer: req.user._id,
+        });
+
+        if (!existing) {
+          return res.status(404).json({
+            success: false,
+            error: "Order not found.",
+          });
+        }
+
+        return res.status(409).json({
+          success: false,
+          error:
+            existing.status === "COMPLETED"
+              ? "This order is already completed."
+              : existing.paymentStatus !== "CONFIRMED"
+                ? "Payment must be confirmed by the admin before completing this order."
+                : "Only orders that are out for delivery can be completed.",
+        });
+      }
+
+      const admins = await User.find({ role: "ADMIN" }).select("_id");
+
+      await Promise.allSettled(
+        admins.map((admin) =>
+          createNotification({
+            userId: admin._id,
+            title: "Order completed",
+            message: `Customer confirmed completion of order #${String(order._id).slice(-6)}.`,
+            type: "DELIVERED",
+            orderId: order._id,
+            data: { status: order.status },
+          })
+        )
+      );
+
+      return res.json({
+        success: true,
+        message: "Order completed successfully.",
+        order,
+      });
+    } catch (error) {
+      console.error("Customer order completion error:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to complete order.",
+      });
+    }
+  }
 );
 
 /* =========================
@@ -464,22 +844,15 @@ error: "Invalid order ID.",
 }
 
 
-  const order = await Order.findById(req.params.id).populate(
-    "customer",
-    "name email phone"
-  );
+const orders = await Order.find({})
+  .populate("customer", "name email phone")
+  .sort({ createdAt: -1 });
 
-  if (!order) {
-    return res.status(404).json({
-      success: false,
-      error: "Order not found.",
-    });
-  }
+return res.json({
+  success: true,
+  orders,
+});
 
-  return res.json({
-    success: true,
-    order,
-  });
 } catch (error) {
   console.error("Get admin order error:", error);
 
@@ -524,7 +897,7 @@ error: "Invalid order ID.",
     PENDING: ["ACCEPTED", "CANCELLED", "REJECTED"],
     ACCEPTED: ["SHOPPING", "CANCELLED"],
     SHOPPING: ["OUT_FOR_DELIVERY", "CANCELLED"],
-    OUT_FOR_DELIVERY: ["COMPLETED", "CANCELLED"],
+    OUT_FOR_DELIVERY: ["CANCELLED"],
     COMPLETED: [],
     CANCELLED: [],
     REJECTED: [],

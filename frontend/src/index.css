@@ -4554,3 +4554,579 @@ p {
   flex: 1;
   background: var(--border, #e7e1f0);
 }
+
+/* =========================================
+   NITUME ORDER WORKFLOW
+   Customer Orders + Admin Orders
+========================================= */
+
+.orders-heading,
+.admin-orders-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.orders-list,
+.admin-orders-list {
+  display: grid;
+  gap: 20px;
+}
+
+.customer-order-card,
+.admin-order-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid var(--border, rgba(130, 105, 180, 0.18));
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 28px rgba(42, 25, 74, 0.055);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.customer-order-card {
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.customer-order-card:hover,
+.admin-order-card:hover {
+  box-shadow: 0 14px 38px rgba(42, 25, 74, 0.09);
+}
+
+.order-card-top,
+.admin-order-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border, #eee8f5);
+}
+
+.order-card-top h2,
+.admin-order-top h2 {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+
+.order-date {
+  display: block;
+  color: var(--text-muted, #81788e);
+  font-size: 0.82rem;
+}
+
+.customer-order-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.customer-order-detail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.customer-order-detail strong,
+.admin-order-info-grid p {
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+}
+
+.customer-order-detail strong {
+  font-size: 0.94rem;
+}
+
+.order-meta-label {
+  display: block;
+  color: var(--text-muted, #81788e);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+}
+
+.customer-order-notes {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: var(--background-subtle, #f7f4fc);
+}
+
+.customer-order-notes p {
+  margin: 7px 0 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.customer-payment-panel,
+.admin-payment-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px;
+  margin: 8px 0 18px;
+  border: 1px solid var(--border, #e9e2f2);
+  border-radius: 16px;
+  background: var(--background-subtle, #f8f5fd);
+}
+
+.customer-payment-panel > div,
+.admin-payment-panel > div:first-child {
+  display: grid;
+  gap: 6px;
+}
+
+.customer-payment-panel strong,
+.admin-payment-panel strong {
+  overflow-wrap: anywhere;
+}
+
+.customer-order-hint,
+.admin-payment-panel p {
+  margin: 8px 0 0;
+  color: var(--text-muted, #756b85);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.customer-order-actions,
+.order-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.customer-order-actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--border, #eee8f5);
+}
+
+.customer-order-actions > .order-details-link {
+  margin-right: auto;
+}
+
+.customer-order-actions button,
+.customer-order-actions a,
+.order-action-row button {
+  min-height: 42px;
+}
+
+.order-edit-form {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 3vw, 22px);
+  margin: 8px 0 18px;
+  border: 1px solid var(--border, #e6ddf2);
+  border-radius: 18px;
+  background: var(--background-subtle, #faf8fd);
+}
+
+.order-edit-heading h3 {
+  margin: 0 0 6px;
+}
+
+.order-edit-heading p {
+  margin: 0;
+  color: var(--text-muted, #81788e);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.order-edit-form label {
+  display: grid;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.order-edit-form input,
+.order-edit-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  color: inherit;
+  font: inherit;
+  border: 1px solid var(--border, #ded5ea);
+  border-radius: 12px;
+  background: var(--surface, #fff);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.order-edit-form input:focus,
+.order-edit-form textarea:focus {
+  border-color: var(--purple, #8153cf);
+  box-shadow: 0 0 0 3px rgba(129, 83, 207, 0.13);
+}
+
+.order-edit-form textarea {
+  resize: vertical;
+}
+
+.nitume-feedback {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin: 0 0 18px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  line-height: 1.5;
+  animation: nitume-feedback-in 180ms ease both;
+}
+
+.nitume-feedback button {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nitume-feedback-error {
+  color: #a32942;
+  background: #fff0f2;
+  border-color: #f6cbd3;
+}
+
+.nitume-feedback-success {
+  color: #216d50;
+  background: #ecfaf3;
+  border-color: #c5edda;
+}
+
+.orders-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 48px 20px;
+  text-align: center;
+  border: 1px dashed var(--border, #dcd1ed);
+  border-radius: 24px;
+  background: var(--surface, #fff);
+}
+
+.orders-empty h2,
+.orders-empty p {
+  margin: 0;
+}
+
+.orders-empty p {
+  max-width: 420px;
+  color: var(--text-muted, #81788e);
+  line-height: 1.6;
+}
+
+.orders-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  border-radius: 20px;
+  background: var(--background-subtle, #f2ebfc);
+  font-size: 1.8rem;
+}
+
+.admin-order-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 20px 0 24px;
+}
+
+.admin-order-summary-strip > div {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid var(--border, #e9e2f2);
+  border-radius: 18px;
+  background: var(--surface, #fff);
+}
+
+.admin-order-summary-strip span {
+  color: var(--text-muted, #81788e);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.admin-order-summary-strip strong {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+
+.admin-order-card {
+  padding: clamp(16px, 2.5vw, 24px);
+}
+
+.admin-order-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 20px 0;
+}
+
+.admin-order-info-grid > div {
+  min-width: 0;
+}
+
+.admin-order-info-grid > div > span,
+.admin-order-notes > span {
+  color: var(--text-muted, #81788e);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.admin-order-info-grid p {
+  margin: 7px 0 0;
+}
+
+.admin-payment-panel {
+  align-items: flex-start;
+}
+
+.admin-payment-action {
+  flex: 1 1 240px;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.admin-payment-confirmed {
+  color: #21815c;
+  font-weight: 800;
+}
+
+.admin-order-notes {
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: var(--background-subtle, #f7f4fc);
+}
+
+.admin-order-notes p {
+  margin: 7px 0 0;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.admin-order-actions {
+  padding-top: 18px;
+  border-top: 1px solid var(--border, #eee8f5);
+}
+
+.admin-order-actions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.admin-order-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--border, #eee8f5);
+}
+
+.btn-danger {
+  color: #fff;
+  background: #c73e59;
+  border: 1px solid #c73e59;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #aa2e47;
+}
+
+.btn:disabled,
+.status-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.nitume-modal-backdrop {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(22, 13, 39, 0.62);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: nitume-fade-in 150ms ease both;
+}
+
+.nitume-confirm-modal {
+  box-sizing: border-box;
+  width: min(100%, 460px);
+  max-height: min(90dvh, 720px);
+  overflow-y: auto;
+  padding: clamp(22px, 5vw, 30px);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  background: var(--surface, #fff);
+  color: var(--text, #211632);
+  box-shadow: 0 28px 90px rgba(13, 6, 25, 0.3);
+  animation: nitume-modal-in 180ms ease both;
+}
+
+.nitume-modal-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 18px;
+  border-radius: 17px;
+  color: var(--purple, #7041ba);
+  background: var(--background-subtle, #f1e9fc);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.nitume-confirm-modal h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.25rem, 4vw, 1.55rem);
+  line-height: 1.25;
+}
+
+.nitume-confirm-modal p {
+  margin: 0 0 24px;
+  color: var(--text-muted, #756b85);
+  line-height: 1.65;
+}
+
+.nitume-confirm-modal .order-action-row {
+  justify-content: flex-end;
+}
+
+@keyframes nitume-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes nitume-modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes nitume-feedback-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .orders-heading,
+  .admin-orders-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .orders-heading > button,
+  .admin-orders-heading > button {
+    align-self: flex-start;
+  }
+
+  .customer-order-details,
+  .admin-order-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+
+  .customer-order-card,
+  .admin-order-card {
+    border-radius: 18px;
+  }
+
+  .customer-order-actions {
+    align-items: stretch;
+  }
+
+  .customer-order-actions > .order-details-link {
+    flex-basis: 100%;
+    margin-bottom: 4px;
+  }
+
+  .customer-order-actions > button,
+  .customer-order-actions > a,
+  .order-action-row > button {
+    flex: 1 1 140px;
+    justify-content: center;
+  }
+
+  .admin-order-summary-strip {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .admin-order-summary-strip > div {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+  }
+
+  .admin-order-summary-strip strong {
+    font-size: 1.35rem;
+  }
+
+  .admin-order-top {
+    align-items: flex-start;
+  }
+
+  .admin-order-top .admin-status,
+  .order-card-top .status-badge {
+    flex-shrink: 0;
+    max-width: 48%;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .customer-payment-panel,
+  .admin-payment-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-payment-action {
+    flex-basis: auto;
+  }
+
+  .admin-payment-action .btn {
+    width: 100%;
+  }
+
+  .nitume-confirm-modal .order-action-row {
+    flex-direction: column-reverse;
+  }
+
+  .nitume-confirm-modal .order-action-row > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-order-card,
+  .admin-order-card,
+  .nitume-modal-backdrop,
+  .nitume-confirm-modal,
+  .nitume-feedback {
+    animation: none;
+    transition: none;
+  }
+}
