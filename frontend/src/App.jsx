@@ -9,6 +9,7 @@ useLocation,
 } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
+import NotificationBell from "./NotificationBell.jsx";
 
 import Home from "./Home";
 import Login from "./Login";
@@ -17,6 +18,7 @@ import Request from "./Request";
 import Orders from "./Orders";
 import Community from "./Community";
 import Settings from "./Settings";
+
 
 import AdminDashboard from "./AdminDashboard/AdminDashboard";
 import AdminOrders from "./AdminDashboard/AdminOrders";
@@ -252,23 +254,27 @@ return ( <div className="app-shell">
   {/* CUSTOMER CONTENT */}
   <main className="app-content">
 
-    <header className="customer-topbar">
 
-      <div>
-        <span className="topbar-location">
-          📍 Ruaka · Gathigi Estate
-        </span>
+
+<header className="customer-topbar">
+  <div>
+    <span className="topbar-location">
+      📍 Ruaka · Gathigi Estate
+    </span>
+  </div>
+
+  <div className="topbar-actions">
+    <NotificationBell />
+
+    <div className="topbar-account">
+      <div className="topbar-avatar">
+        {firstName.charAt(0).toUpperCase()}
       </div>
+      <span>{firstName}</span>
+    </div>
+  </div>
+</header>
 
-      <div className="topbar-account">
-        <div className="topbar-avatar">
-          {firstName.charAt(0).toUpperCase()}
-        </div>
-
-        <span>{firstName}</span>
-      </div>
-
-    </header>
 
     <div className="main-content">
       <Outlet />
@@ -628,13 +634,16 @@ function AdminLayout() {
       {/* =====================================================
           ADMIN CONTENT
       ===================================================== */}
-      <main className="admin-content">
 
-        <div className="admin-main">
-          <Outlet />
-        </div>
+<main className="admin-content">
+  <header className="admin-notification-bar">
+    <NotificationBell />
+  </header>
 
-      </main>
+  <div className="admin-main">
+    <Outlet />
+  </div>
+</main>
 
     </div>
   );

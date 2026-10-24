@@ -5181,3 +5181,34 @@ p {
   height: 100%;
   object-fit: contain;
 }
+
+
+/* Notification bell placement */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.admin-notification-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 14px 24px 0;
+  position: relative;
+  z-index: 20;
+}
+
+@media (max-width: 640px) {
+  .topbar-actions {
+    gap: 10px;
+  }
+
+  .topbar-account > span {
+    display: none;
+  }
+
+  .admin-notification-bar {
+    padding: 12px 16px 0;
+  }
+}
