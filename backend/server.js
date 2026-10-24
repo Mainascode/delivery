@@ -163,7 +163,7 @@ const activeOrder = await Order.findOne({
       "PENDING",
       "ACCEPTED",
       "SHOPPING",
-      "OUT_FOR_DELIVERY",
+      "READY_FOR_DELIVERY",
     ],
   },
 });
@@ -769,7 +769,7 @@ let settings = await Settings.findOne();
 
   const activeCount = await Order.countDocuments({
     status: {
-      $in: ["ACCEPTED", "SHOPPING", "OUT_FOR_DELIVERY"],
+      $in: ["ACCEPTED", "SHOPPING", "READY_FOR_DELIVERY"],
     },
   });
 
