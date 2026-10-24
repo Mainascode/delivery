@@ -30,7 +30,16 @@ GENERAL HELPERS
 ========================================================= */
 
 function LoadingScreen() {
-return ( <div className="loading-screen"> <div className="loading-logo">N</div> <div className="spinner" /> <p>Loading NITUME...</p> </div>
+return (
+  <div className="loading-screen">
+    <img
+      src="/nitume-logo.png"
+      alt="NITUME"
+      className="loading-logo"
+    />
+    <div className="spinner" />
+    <p>Loading your NITUME experience...</p>
+  </div>
 );
 }
 
@@ -125,6 +134,9 @@ return ( <div className="app-shell">
 
   {/* DESKTOP SIDEBAR */}
   <aside className="sidebar">
+    <NavLink to="/" className="nitume-sidebar-brand" aria-label="NITUME home">
+  <img src="/nitume-logo.png" alt="NITUME" />
+</NavLink>
 
     <div className="sidebar-brand">
       <NavLink to="/" className="brand-link">
@@ -355,9 +367,9 @@ function AdminLayout() {
             to="/operator"
             className="admin-brand-link"
           >
-            <div className="admin-brand-mark">
-              N
-            </div>
+         <div className="admin-brand-mark">
+  <img src="/nitume-logo.png" alt="NITUME" />
+</div>
 
             <div>
               <strong>NITUME</strong>
@@ -453,9 +465,9 @@ function AdminLayout() {
           to="/operator"
           className="admin-mobile-brand"
         >
-          <div className="admin-brand-mark">
-            N
-          </div>
+            <div className="admin-brand-mark">
+  <img src="/nitume-logo.png" alt="NITUME" />
+</div>
 
           <div>
             <strong>NITUME</strong>
@@ -503,9 +515,9 @@ function AdminLayout() {
 
           <div className="admin-brand-link">
 
-            <div className="admin-brand-mark">
-              N
-            </div>
+           <div className="admin-brand-mark">
+  <img src="/nitume-logo.png" alt="NITUME" />
+</div>
 
             <div>
               <strong>NITUME</strong>

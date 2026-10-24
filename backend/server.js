@@ -536,8 +536,8 @@ app.patch(
           error:
             existing.paymentStatus === "CONFIRMED"
               ? "Payment has already been confirmed."
-              : existing.status !== "OUT_FOR_DELIVERY"
-                ? "Payment can only be submitted when your order is out for delivery."
+              : existing.status !== "READY_FOR_DELIVERY"
+                ? "Payment can only be submitted when your order is ready for delivery."
                 : "Payment has already been submitted for confirmation.",
         });
       }
@@ -594,7 +594,7 @@ app.patch(
       const order = await Order.findOneAndUpdate(
         {
           _id: req.params.id,
-          status: "OUT_FOR_DELIVERY",
+          status: "READY_FOR_DELIVERY",
           paymentStatus: "CUSTOMER_MARKED_PAID",
         },
         {
@@ -622,7 +622,7 @@ app.patch(
           error:
             existing.paymentStatus === "CONFIRMED"
               ? "Payment is already confirmed."
-              : "Payment can only be confirmed after the customer submits it and the order is out for delivery.",
+              : "Payment can only be confirmed after the customer submits it and the order is ready for delivery.",
         });
       }
 
@@ -679,7 +679,7 @@ app.patch(
         {
           _id: req.params.id,
           customer: req.user._id,
-          status: "OUT_FOR_DELIVERY",
+          status: "READY_FOR_DELIVERY",
           paymentStatus: "CONFIRMED",
         },
         {
@@ -711,7 +711,7 @@ app.patch(
               ? "This order is already completed."
               : existing.paymentStatus !== "CONFIRMED"
                 ? "Payment must be confirmed by the admin before completing this order."
-                : "Only orders that are out for delivery can be completed.",
+                : "Only orders that are ready for delivery can be completed.",
         });
       }
 
@@ -871,8 +871,8 @@ ADMIN: UPDATE ORDER STATUS
 
 PENDING -> ACCEPTED, CANCELLED, REJECTED
 ACCEPTED -> SHOPPING, CANCELLED
-SHOPPING -> OUT_FOR_DELIVERY, CANCELLED
-OUT_FOR_DELIVERY -> COMPLETED, CANCELLED
+SHOPPING -> READY_FOR_DELIVERY, CANCELLED
+READY_FOR_DELIVERY -> COMPLETED, CANCELLED
 
 Terminal states cannot be changed.
 Atomic updates prevent duplicate decisions.

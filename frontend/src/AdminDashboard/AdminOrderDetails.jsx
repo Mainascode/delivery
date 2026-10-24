@@ -275,7 +275,7 @@ return ( <div className="page admin-order-details-page">
        >
 ← Back to orders </Link>
 
-```
+
       <span className="eyebrow">
         ORDER DETAILS
       </span>

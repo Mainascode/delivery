@@ -448,10 +448,12 @@ export default function AdminDashboard() {
   }, [loadDashboard]);
 
   const stats = useMemo(() => {
-    const incoming = orders.filter(
-      (order) =>
-        normalizeStatus(order.status) === "ACCEPTED"
-    );
+    const incoming = [...orders].sort((a, b) => {
+  const dateA = new Date(a.createdAt || 0).getTime();
+  const dateB = new Date(b.createdAt || 0).getTime();
+
+  return dateB - dateA;
+});
 
     const shopping = orders.filter(
       (order) =>
@@ -461,7 +463,7 @@ export default function AdminDashboard() {
     const delivering = orders.filter(
       (order) =>
         normalizeStatus(order.status) ===
-        "OUT_FOR_DELIVERY"
+        "READY_FOR_DELIVERY"
     );
 
     const completed = orders.filter(
@@ -710,7 +712,7 @@ export default function AdminDashboard() {
         />
 
         <StatCard
-          title="Out for delivery"
+          title="Ready for delivery"
           value={stats.delivering.length}
           description="Currently on the road"
           icon="🚴"
@@ -761,8 +763,8 @@ export default function AdminDashboard() {
             <div>
               <span className="eyebrow">
                 {selectedStat === "incoming"
-                  ? "NEEDS ATTENTION"
-                  : "ORDER QUEUE"}
+  ? "ALL ORDERS"
+  : "ORDER QUEUE"}
               </span>
 
               <h2>
@@ -789,7 +791,7 @@ export default function AdminDashboard() {
               </div>
 
               <h3>
-                Nothing needs attention
+                No Orders yet
               </h3>
 
               <p>

@@ -6,8 +6,8 @@ import { api } from "../services/api";
 const allowedActions = {
   PENDING: ["ACCEPTED", "REJECTED", "CANCELLED"],
   ACCEPTED: ["SHOPPING", "CANCELLED"],
-  SHOPPING: ["OUT_FOR_DELIVERY", "CANCELLED"],
-  OUT_FOR_DELIVERY: ["CANCELLED"],
+  SHOPPING: ["READY_FOR_DELIVERY", "CANCELLED"],
+  READY_FOR_DELIVERY: ["CANCELLED"],
   COMPLETED: [],
   CANCELLED: [],
   REJECTED: [],
@@ -18,7 +18,7 @@ const actionLabels = {
   REJECTED: "Reject request",
   CANCELLED: "Cancel order",
   SHOPPING: "Start shopping",
-  OUT_FOR_DELIVERY: "Mark out for delivery",
+  READY_FOR_DELIVERY: "Mark ready for delivery",
 };
 
 function formatStatus(status = "UNKNOWN") {
@@ -194,7 +194,7 @@ export default function AdminOrders() {
             {
               orders.filter(
                 (order) =>
-                  order.status === "OUT_FOR_DELIVERY" &&
+                  order.status === "READY_FOR_DELIVERY" &&
                   order.paymentStatus === "CUSTOMER_MARKED_PAID"
               ).length
             }
@@ -241,7 +241,7 @@ export default function AdminOrders() {
             const isUpdating = updatingId === id;
             const paymentStatus = order.paymentStatus || "UNPAID";
             const paymentNeedsConfirmation =
-              currentStatus === "OUT_FOR_DELIVERY" &&
+              currentStatus === "READY_FOR_DELIVERY" &&
               paymentStatus === "CUSTOMER_MARKED_PAID";
 
             return (
@@ -373,7 +373,7 @@ export default function AdminOrders() {
                     </p>
                   )}
 
-                  {currentStatus === "OUT_FOR_DELIVERY" && (
+                  {currentStatus === "READY_FOR_DELIVERY" && (
                     <p className="updating-text">
                       The customer completes the order after payment has been confirmed.
                     </p>

@@ -2418,16 +2418,13 @@ p {
 }
 
 .loading-logo {
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 15px;
-  background: var(--coral);
-  color: var(--white);
-  font-family: "Space Grotesk", sans-serif;
-  font-size: 1.3rem;
-  font-weight: 800;
+  display: block;
+  width: min(220px, 65vw);
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  margin: 0 auto 20px;
+  border-radius: 12px;
 }
 
 .not-found-page {
@@ -5129,4 +5126,58 @@ p {
     animation: none;
     transition: none;
   }
+}
+
+
+/* NITUME logo branding */
+.nitume-sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+
+.nitume-sidebar-brand img {
+  display: block;
+  width: 155px;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.admin-brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+/* Loading logo */
+.loading-logo {
+  display: block;
+  width: min(220px, 65vw);
+  height: auto;
+  max-height: 150px;
+  object-fit: contain;
+  margin: 0 auto 20px;
+  border-radius: 12px;
+}
+
+/* NITUME admin brand image */
+.admin-brand-mark {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }

@@ -218,7 +218,7 @@
   height: 100%;
   background: linear-gradient(90deg, #7c3aed, #c4b5fd);
   transform-origin: left center;
-  animation: nitume-toast-countdown 20s linear forwards;
+  animation: nitume-toast-countdown 1.5ms linear forwards;
 }
 
 /* Entry and progress animations */
