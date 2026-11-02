@@ -3,11 +3,11 @@ import { FaCheckCircle } from "react-icons/fa";
 
 const benefits = [
   {
-    title: "Support local businesses 🏪",
+    title: "Support local businesses",
     text: "Keep your shopping within the neighbourhood and help local shops grow.",
   },
   {
-    title: "Built around the community 🚴",
+    title: "Built around the community",
     text: "NITUME is designed around the people, shops and everyday needs of Ruaka and Gathigi Estate.",
   },
   {
@@ -15,7 +15,7 @@ const benefits = [
     text: "Nearby errands don't need complicated delivery systems. Tell us what you need and we handle the running.",
   },
   {
-    title: "Simple and transparent 🤝",
+    title: "Simple and transparent",
     text: "Know the delivery fee before your request is handled, with clear updates along the way.",
   },
 ];

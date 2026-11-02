@@ -456,9 +456,6 @@ useEffect(() => {
                 )}
 
                 <div className="customer-order-actions">
-                  <Link to={`/orders/${id}`} className="order-details-link">
-                    View order details <span aria-hidden="true">→</span>
-                  </Link>
 
                   {pending && !editing && (
                     <>

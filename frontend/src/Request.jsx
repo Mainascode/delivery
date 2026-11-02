@@ -162,10 +162,10 @@ export default function Request() {
 
             <textarea
               placeholder={`Example:
-2kg rice
+2kg meat
 Milk
-Bread
-Cooking oil`}
+Snacks
+Drinks`}
               value={items}
               onChange={(event) => setItems(event.target.value)}
               rows={6}
@@ -261,7 +261,7 @@ Cooking oil`}
               <strong>We handle the running</strong>
 
               <p>
-                Your order is collected and delivered to the location
+                Your order is collected and delivered to the location/house Number
                 you provide.
               </p>
             </div>
