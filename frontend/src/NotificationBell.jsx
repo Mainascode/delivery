@@ -171,25 +171,25 @@ export default function NotificationBell() {
 function getNotificationIcon(type) {
   switch (type) {
     case "ORDER_CREATED":
-      return "🛵";
+      return "";
 
     case "ORDER_ACCEPTED":
-      return "✅";
+      return "";
 
     case "ORDER_UPDATED":
-      return "🔄";
+      return "";
 
     case "PRICE_CONFIRMED":
-      return "💰";
+      return "";
 
-    case "OUT_FOR_DELIVERY":
-      return "🚚";
+    case "READY_FOR_DELIVERY":
+      return "";
 
     case "DELIVERED":
-      return "📦";
+      return "";
 
     case "CANCELLED":
-      return "❌";
+      return "";
 
     default:
       return "🔔";

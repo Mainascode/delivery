@@ -56,7 +56,7 @@ const orderSchema = new mongoose.Schema(
         "PENDING",
         "ACCEPTED",
         "SHOPPING",
-        "OUT_FOR_DELIVERY",
+        "READY_FOR_DELIVERY",
         "COMPLETED",
         "CANCELLED",
         "REJECTED",

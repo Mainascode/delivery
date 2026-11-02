@@ -287,9 +287,9 @@ export default function Orders() {
             const busy = busyId === id;
             const editing = editingId === id;
             const canSubmitPayment =
-              status === "OUT_FOR_DELIVERY" && paymentStatus === "UNPAID";
+              status === "READY_FOR_DELIVERY" && paymentStatus === "UNPAID";
             const canComplete =
-              status === "OUT_FOR_DELIVERY" && paymentStatus === "CONFIRMED";
+              status === "COMPLETED" && paymentStatus === "CONFIRMED";
 
             return (
               <article className="order-card customer-order-card" key={id}>
@@ -344,7 +344,7 @@ export default function Orders() {
                       Your payment report is waiting for admin confirmation.
                     </p>
                   )}
-                  {paymentStatus === "CONFIRMED" && status === "OUT_FOR_DELIVERY" && (
+                  {paymentStatus === "CONFIRMED" && status === "READY_FOR_DELIVERY" && (
                     <p className="customer-order-hint">
                       Payment confirmed. You can now complete this order.
                     </p>
@@ -425,9 +425,6 @@ export default function Orders() {
                 )}
 
                 <div className="customer-order-actions">
-                  <Link to={`/orders/${id}`} className="order-details-link">
-                    View order details <span aria-hidden="true">→</span>
-                  </Link>
 
                   {pending && !editing && (
                     <>
@@ -475,7 +472,7 @@ export default function Orders() {
 
                 {ACTIVE_STATUSES.includes(status) && !pending && (
                   <p className="customer-order-hint">
-                    {status === "OUT_FOR_DELIVERY"
+                    {status === "READY_FOR_DELIVERY"
                       ? "Your order is on its way. Confirm payment and delivery when ready."
                       : "Your order is being processed. You’ll see the next step here."}
                   </p>

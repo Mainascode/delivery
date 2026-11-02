@@ -28,7 +28,7 @@ const notificationSchema = new mongoose.Schema(
         "ORDER_ACCEPTED",
         "ORDER_UPDATED",
         "PRICE_CONFIRMED",
-        "OUT_FOR_DELIVERY",
+        "READY_FOR_DELIVERY",
         "DELIVERED",
         "CANCELLED",
         "SYSTEM",
