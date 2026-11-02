@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -33,17 +34,24 @@ async function getAuthHeaders() {
 
 export function NotificationProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
+  const inFlightRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchNotifications = useCallback(async () => {
-    if (!user) {
-      setNotifications([]);
-      return;
-    }
+const fetchNotifications = useCallback(() => {
+  if (!user) {
+    setNotifications([]);
+    return Promise.resolve();
+  }
 
+  // Reuse an existing request instead of starting another.
+  if (inFlightRef.current) {
+    return inFlightRef.current;
+  }
+
+  const request = (async () => {
     try {
       setLoading(true);
       setError("");
@@ -55,61 +63,102 @@ export function NotificationProvider({ children }) {
         {
           method: "GET",
           headers,
+          cache: "no-store",
         }
       );
+
+      const contentType =
+        response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        throw new Error(
+          `Notifications service returned an unexpected response (${response.status}).`
+        );
+      }
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
           data.error ||
-            data.message ||
-            "Failed to load notifications"
+          data.message ||
+          "Failed to load notifications."
         );
       }
 
-      setNotifications(
-        data.notifications || []
-      );
-    } catch (err) {
-      console.error(
-        "Notification fetch error:",
-        err
-      );
+      setNotifications(data.notifications || []);
+      setError("");
 
-      setError(err.message);
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.warn(
+          "Notifications temporarily unavailable:",
+          err.message
+        );
+
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
+      inFlightRef.current = null;
     }
-  }, [user]);
+  })();
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchNotifications();
-    }
+  inFlightRef.current = request;
 
-    if (!authLoading && !user) {
-      setNotifications([]);
-      setError("");
-    }
-  }, [
-    authLoading,
-    user,
-    fetchNotifications,
-  ]);
+  return request;
+}, [user]);
 
   // Refresh notifications periodically.
-  useEffect(() => {
-    if (!user) return;
+useEffect(() => {
+  if (authLoading) return;
 
-    const interval = setInterval(() => {
+  if (!user) {
+    setNotifications([]);
+    setError("");
+    setLoading(false);
+    return;
+  }
+
+  // Load notifications immediately after authentication.
+  fetchNotifications();
+
+  // Refresh only while the application is visible.
+  const refreshNotifications = () => {
+    if (document.visibilityState === "visible") {
       fetchNotifications();
-    }, 30000);
+    }
+  };
 
-    return () => {
-      clearInterval(interval);
-    };
-  }, [user, fetchNotifications]);
+  const interval = window.setInterval(
+    refreshNotifications,
+    60000
+  );
+
+  window.addEventListener(
+    "focus",
+    refreshNotifications
+  );
+
+  document.addEventListener(
+    "visibilitychange",
+    refreshNotifications
+  );
+
+  return () => {
+    window.clearInterval(interval);
+
+    window.removeEventListener(
+      "focus",
+      refreshNotifications
+    );
+
+    document.removeEventListener(
+      "visibilitychange",
+      refreshNotifications
+    );
+  };
+}, [authLoading, user, fetchNotifications]);
 
   const markAsRead = useCallback(
     async (notificationId) => {
