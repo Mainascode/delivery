@@ -71,7 +71,19 @@ export default function Orders() {
       else setLoading(true);
 
       const data = await api("/api/orders");
-      setOrders(data.orders || []);
+      const latestOrders = data.orders || [];
+setOrders(latestOrders);
+
+// Close an edit form if the order is no longer pending.
+setEditingId((currentId) => {
+  if (!currentId) return "";
+
+  const currentOrder = latestOrders.find(
+    (order) => (order._id || order.id) === currentId
+  );
+
+  return currentOrder?.status === "PENDING" ? currentId : "";
+});
     } catch (err) {
       console.error("Failed to load orders:", err);
       setError(getErrorMessage(err, "Unable to load your orders."));
@@ -81,9 +93,28 @@ export default function Orders() {
     }
   }, []);
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+useEffect(() => {
+  loadOrders();
+
+  const refreshOrders = () => {
+    if (document.visibilityState === "visible") {
+      loadOrders(true);
+    }
+  };
+
+  // Refresh every 15 seconds while the page is visible.
+  const interval = setInterval(refreshOrders, 15000);
+
+  // Refresh when the customer returns to the page.
+  window.addEventListener("focus", refreshOrders);
+  document.addEventListener("visibilitychange", refreshOrders);
+
+  return () => {
+    clearInterval(interval);
+    window.removeEventListener("focus", refreshOrders);
+    document.removeEventListener("visibilitychange", refreshOrders);
+  };
+}, [loadOrders]);
 
   function startEditing(order) {
     setNotice("");
@@ -289,7 +320,7 @@ export default function Orders() {
             const canSubmitPayment =
               status === "READY_FOR_DELIVERY" && paymentStatus === "UNPAID";
             const canComplete =
-              status === "COMPLETED" && paymentStatus === "CONFIRMED";
+              status === "READY_FOR_DELIVERY" && paymentStatus === "CONFIRMED";
 
             return (
               <article className="order-card customer-order-card" key={id}>
@@ -425,6 +456,9 @@ export default function Orders() {
                 )}
 
                 <div className="customer-order-actions">
+                  <Link to={`/orders/${id}`} className="order-details-link">
+                    View order details <span aria-hidden="true">→</span>
+                  </Link>
 
                   {pending && !editing && (
                     <>
@@ -472,7 +506,7 @@ export default function Orders() {
 
                 {ACTIVE_STATUSES.includes(status) && !pending && (
                   <p className="customer-order-hint">
-                    {status === "READY_FOR_DELIVERY"
+                    {status === "OUT_FOR_DELIVERY"
                       ? "Your order is on its way. Confirm payment and delivery when ready."
                       : "Your order is being processed. You’ll see the next step here."}
                   </p>
