@@ -1,3 +1,4 @@
+
 import React, {
   createContext,
   useCallback,
@@ -32,139 +33,161 @@ async function getAuthHeaders() {
   };
 }
 
+async function readResponse(response) {
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(
+      `Notification service returned an unexpected response (HTTP ${response.status}).`
+    );
+  }
+
+  return response.json();
+}
+
 export function NotificationProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
-  const inFlightRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-const fetchNotifications = useCallback(() => {
-  if (!user) {
-    setNotifications([]);
-    return Promise.resolve();
-  }
+  // Prevent overlapping requests for the same account.
+  const inFlightRef = useRef(null);
 
-  // Reuse an existing request instead of starting another.
-  if (inFlightRef.current) {
-    return inFlightRef.current;
-  }
+  const fetchNotifications = useCallback(() => {
+    const uid = user?.uid;
 
-  const request = (async () => {
-    try {
-      setLoading(true);
+    if (!uid) {
+      setNotifications([]);
       setError("");
+      return Promise.resolve();
+    }
 
-      const headers = await getAuthHeaders();
+    const existingRequest = inFlightRef.current;
 
-      const response = await fetch(
-        `${API_URL}/api/notifications`,
-        {
-          method: "GET",
-          headers,
-          cache: "no-store",
+    if (existingRequest?.uid === uid) {
+      return existingRequest.promise;
+    }
+
+    const request = (async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const headers = await getAuthHeaders();
+
+        // Do not continue if the signed-in account changed.
+        if (auth.currentUser?.uid !== uid) return;
+
+        const response = await fetch(
+          `${API_URL}/api/notifications`,
+          {
+            method: "GET",
+            headers,
+            cache: "no-store",
+          }
+        );
+
+        const data = await readResponse(response);
+
+        if (!response.ok) {
+          throw new Error(
+            data.error ||
+              data.message ||
+              "Failed to load notifications."
+          );
         }
-      );
 
-      const contentType =
-        response.headers.get("content-type") || "";
+        // Prevent an old account's response updating the new account.
+        if (auth.currentUser?.uid !== uid) return;
 
-      if (!contentType.includes("application/json")) {
-        throw new Error(
-          `Notifications service returned an unexpected response (${response.status}).`
-        );
+        setNotifications(data.notifications || []);
+        setError("");
+      } catch (err) {
+        if (auth.currentUser?.uid === uid) {
+          console.warn(
+            "Notifications temporarily unavailable:",
+            err.message
+          );
+
+          setError(err.message);
+        }
+      } finally {
+        if (inFlightRef.current?.promise === request) {
+          inFlightRef.current = null;
+        }
+
+        setLoading(false);
       }
+    })();
 
-      const data = await response.json();
+    inFlightRef.current = {
+      uid,
+      promise: request,
+    };
 
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-          data.message ||
-          "Failed to load notifications."
-        );
-      }
+    return request;
+  }, [user?.uid]);
 
-      setNotifications(data.notifications || []);
+  // Load immediately after authentication and refresh periodically.
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user?.uid) {
+      setNotifications([]);
       setError("");
-
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        console.warn(
-          "Notifications temporarily unavailable:",
-          err.message
-        );
-
-        setError(err.message);
-      }
-    } finally {
       setLoading(false);
-      inFlightRef.current = null;
+      return;
     }
-  })();
 
-  inFlightRef.current = request;
+    fetchNotifications();
 
-  return request;
-}, [user]);
+    const refreshNotifications = () => {
+      if (document.visibilityState === "visible") {
+        fetchNotifications();
+      }
+    };
 
-  // Refresh notifications periodically.
-useEffect(() => {
-  if (authLoading) return;
+    const interval = window.setInterval(
+      refreshNotifications,
+      60000
+    );
 
-  if (!user) {
-    setNotifications([]);
-    setError("");
-    setLoading(false);
-    return;
-  }
-
-  // Load notifications immediately after authentication.
-  fetchNotifications();
-
-  // Refresh only while the application is visible.
-  const refreshNotifications = () => {
-    if (document.visibilityState === "visible") {
-      fetchNotifications();
-    }
-  };
-
-  const interval = window.setInterval(
-    refreshNotifications,
-    60000
-  );
-
-  window.addEventListener(
-    "focus",
-    refreshNotifications
-  );
-
-  document.addEventListener(
-    "visibilitychange",
-    refreshNotifications
-  );
-
-  return () => {
-    window.clearInterval(interval);
-
-    window.removeEventListener(
+    window.addEventListener(
       "focus",
       refreshNotifications
     );
 
-    document.removeEventListener(
+    document.addEventListener(
       "visibilitychange",
       refreshNotifications
     );
-  };
-}, [authLoading, user, fetchNotifications]);
+
+    return () => {
+      window.clearInterval(interval);
+
+      window.removeEventListener(
+        "focus",
+        refreshNotifications
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        refreshNotifications
+      );
+    };
+  }, [
+    authLoading,
+    user?.uid,
+    fetchNotifications,
+  ]);
 
   const markAsRead = useCallback(
     async (notificationId) => {
       try {
-        const headers =
-          await getAuthHeaders();
+        const headers = await getAuthHeaders();
 
         const response = await fetch(
           `${API_URL}/api/notifications/${notificationId}/read`,
@@ -174,24 +197,20 @@ useEffect(() => {
           }
         );
 
-        const data = await response.json();
+        const data = await readResponse(response);
 
         if (!response.ok) {
           throw new Error(
             data.error ||
               data.message ||
-              "Failed to mark notification as read"
+              "Failed to mark notification as read."
           );
         }
 
         setNotifications((current) =>
           current.map((notification) =>
-            notification._id ===
-            notificationId
-              ? {
-                  ...notification,
-                  read: true,
-                }
+            notification._id === notificationId
+              ? { ...notification, read: true }
               : notification
           )
         );
@@ -205,51 +224,46 @@ useEffect(() => {
     []
   );
 
-  const markAllAsRead = useCallback(
-    async () => {
-      try {
-        const headers =
-          await getAuthHeaders();
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const headers = await getAuthHeaders();
 
-        const response = await fetch(
-          `${API_URL}/api/notifications/read-all`,
-          {
-            method: "PATCH",
-            headers,
-          }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.error ||
-              data.message ||
-              "Failed to mark notifications as read"
-          );
+      const response = await fetch(
+        `${API_URL}/api/notifications/read-all`,
+        {
+          method: "PATCH",
+          headers,
         }
+      );
 
-        setNotifications((current) =>
-          current.map((notification) => ({
-            ...notification,
-            read: true,
-          }))
-        );
-      } catch (err) {
-        console.error(
-          "Mark all notifications read error:",
-          err
+      const data = await readResponse(response);
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            data.message ||
+            "Failed to mark notifications as read."
         );
       }
-    },
-    []
-  );
+
+      setNotifications((current) =>
+        current.map((notification) => ({
+          ...notification,
+          read: true,
+        }))
+      );
+    } catch (err) {
+      console.error(
+        "Mark all notifications read error:",
+        err
+      );
+    }
+  }, []);
 
   const unreadCount = useMemo(
     () =>
       notifications.filter(
-        (notification) =>
-          !notification.read
+        (notification) => !notification.read
       ).length,
     [notifications]
   );
@@ -276,17 +290,14 @@ useEffect(() => {
   );
 
   return (
-    <NotificationContext.Provider
-      value={value}
-    >
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );
 }
 
 export function useNotifications() {
-  const context =
-    useContext(NotificationContext);
+  const context = useContext(NotificationContext);
 
   if (!context) {
     throw new Error(
