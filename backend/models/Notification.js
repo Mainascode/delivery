@@ -31,6 +31,8 @@ const notificationSchema = new mongoose.Schema(
         "READY_FOR_DELIVERY",
         "DELIVERED",
         "CANCELLED",
+        "PAYMENT_CONFIRMED",
+        "PAYMENT_SUBMITTED",
         "SYSTEM",
       ],
       default: "SYSTEM",

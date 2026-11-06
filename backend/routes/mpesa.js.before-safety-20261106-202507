@@ -1,0 +1,492 @@
+
+import express from "express";
+import mongoose from "mongoose";
+
+import Order from "../models/Order.js";
+import MpesaPayment from "../models/MpesaPayment.js";
+import User from "../models/User.js";
+
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
+
+import {
+  initiateStkPush,
+  normalizeKenyanPhone,
+  parseMpesaCallback,
+} from "../services/mpesa.js";
+
+import { createNotification } from "../services/notifications.js";
+
+const router = express.Router();
+
+function acknowledgeSafaricom(res) {
+  return res.status(200).json({
+    ResultCode: 0,
+    ResultDesc: "Accepted",
+  });
+}
+
+/*
+ ADMIN: SET ACTUAL SHOPPING COST
+
+ Allowed only while shopping is in progress.
+ The backend calculates the final amount.
+*/
+router.patch(
+  "/orders/:id/shopping-cost",
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const shoppingCost = Number(req.body.shoppingCost);
+
+      if (
+        !Number.isSafeInteger(shoppingCost) ||
+        shoppingCost < 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Shopping cost must be a non-negative whole KES amount.",
+        });
+      }
+
+      const order = await Order.findOne({
+        _id: req.params.id,
+        status: "SHOPPING",
+        paymentStatus: "UNPAID",
+      });
+
+      if (!order) {
+        return res.status(409).json({
+          success: false,
+          error: "Shopping cost can only be entered for an unpaid order currently being shopped.",
+        });
+      }
+
+      if (order.paymentRequestInProgress) {
+        return res.status(409).json({
+          success: false,
+          error: "A payment request is currently being processed.",
+        });
+      }
+
+      order.shoppingCost = shoppingCost;
+      order.totalAmount = shoppingCost + order.deliveryFee;
+      order.shoppingCostEnteredAt = new Date();
+      order.shoppingCostEnteredBy = req.user._id;
+
+      await order.save();
+
+      return res.json({
+        success: true,
+        message: "Shopping cost saved.",
+        order,
+      });
+    } catch (error) {
+      console.error("Shopping cost update error:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Failed to update shopping cost.",
+      });
+    }
+  }
+);
+
+/*
+ CUSTOMER: REQUEST M-PESA STK PUSH
+*/
+router.post(
+  "/orders/:id/stk-push",
+  requireAuth,
+  async (req, res) => {
+    let payment = null;
+    let lockedOrder = null;
+
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const phoneNumber = normalizeKenyanPhone(req.body.phoneNumber);
+
+      const order = await Order.findOne({
+        _id: req.params.id,
+        customer: req.user._id,
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          error: "Order not found.",
+        });
+      }
+
+      if (order.status !== "READY_FOR_DELIVERY") {
+        return res.status(409).json({
+          success: false,
+          error: "Payment is available when your order is ready for delivery.",
+        });
+      }
+
+      if (
+        order.shoppingCost === null ||
+        order.shoppingCost === undefined ||
+        !Number.isSafeInteger(order.totalAmount) ||
+        order.totalAmount < 1 ||
+        order.totalAmount !== order.shoppingCost + order.deliveryFee
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: "The final order amount has not been confirmed by the admin.",
+        });
+      }
+
+      if (order.paymentStatus === "CONFIRMED") {
+        return res.status(409).json({
+          success: false,
+          error: "This order has already been paid.",
+        });
+      }
+
+      const existingPending = await MpesaPayment.findOne({
+        order: order._id,
+        status: { $in: ["INITIATED", "PENDING"] },
+      });
+
+      if (existingPending) {
+        return res.status(409).json({
+          success: false,
+          error: "A payment request is already pending. Check your phone before trying again.",
+          paymentId: existingPending._id,
+        });
+      }
+
+      lockedOrder = await Order.findOneAndUpdate(
+        {
+          _id: order._id,
+          customer: req.user._id,
+          status: "READY_FOR_DELIVERY",
+          paymentStatus: "UNPAID",
+          paymentRequestInProgress: { $ne: true },
+        },
+        {
+          $set: {
+            paymentRequestInProgress: true,
+          },
+        },
+        { new: true }
+      );
+
+      if (!lockedOrder) {
+        return res.status(409).json({
+          success: false,
+          error: "Another payment request is being processed. Please refresh and try again.",
+        });
+      }
+
+      payment = await MpesaPayment.create({
+        order: lockedOrder._id,
+        customer: req.user._id,
+        amount: lockedOrder.totalAmount,
+        phoneNumber,
+        status: "INITIATED",
+      });
+
+      const stk = await initiateStkPush({
+        phoneNumber,
+        amount: payment.amount,
+        orderId: lockedOrder._id,
+      });
+
+      payment.merchantRequestId = stk.merchantRequestId;
+      payment.checkoutRequestId = stk.checkoutRequestId;
+      payment.status = "PENDING";
+
+      await payment.save();
+
+      lockedOrder.paymentRequestInProgress = false;
+      lockedOrder.activeMpesaPayment = payment._id;
+      lockedOrder.paymentMethod = "MPESA";
+
+      await lockedOrder.save();
+
+      return res.status(202).json({
+        success: true,
+        message: stk.customerMessage,
+        payment: {
+          id: payment._id,
+          amount: payment.amount,
+          status: payment.status,
+        },
+      });
+    } catch (error) {
+      console.error("STK Push error:", error.message);
+
+      if (payment) {
+        payment.status = "FAILED";
+        payment.resultDescription = error.message;
+        payment.completedAt = new Date();
+        await payment.save().catch(() => {});
+      }
+
+      if (lockedOrder) {
+        await Order.updateOne(
+          { _id: lockedOrder._id },
+          { $set: { paymentRequestInProgress: false } }
+        ).catch(() => {});
+      }
+
+      return res.status(502).json({
+        success: false,
+        error: error.message || "Unable to initiate M-Pesa payment.",
+      });
+    }
+  }
+);
+
+/*
+ CUSTOMER OR ADMIN: CHECK PAYMENT STATUS
+*/
+router.get(
+  "/orders/:id/payment",
+  requireAuth,
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid order ID.",
+        });
+      }
+
+      const orderQuery = { _id: req.params.id };
+
+      if (req.user.role !== "ADMIN") {
+        orderQuery.customer = req.user._id;
+      }
+
+      const order = await Order.findOne(orderQuery);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          error: "Order not found.",
+        });
+      }
+
+      const payment = await MpesaPayment.findOne({
+        order: order._id,
+      }).sort({ createdAt: -1 });
+
+      return res.json({
+        success: true,
+        paymentStatus: order.paymentStatus,
+        totalAmount: order.totalAmount,
+        payment: payment
+          ? {
+              id: payment._id,
+              amount: payment.amount,
+              status: payment.status,
+              receiptNumber: payment.mpesaReceiptNumber,
+              resultDescription: payment.resultDescription,
+              createdAt: payment.createdAt,
+              completedAt: payment.completedAt,
+            }
+          : null,
+      });
+    } catch (error) {
+      console.error("Payment status error:", error);
+
+      return res.status(500).json({
+        success: false,
+        error: "Unable to retrieve payment status.",
+      });
+    }
+  }
+);
+
+/*
+ PUBLIC SAFARICOM CALLBACK
+ No Firebase authentication: Safaricom calls this server-to-server.
+*/
+router.post(
+  "/payments/mpesa/callback",
+  async (req, res) => {
+    let callback;
+
+    try {
+      callback = parseMpesaCallback(req.body);
+    } catch (error) {
+      console.error("Invalid M-Pesa callback:", error.message);
+      return acknowledgeSafaricom(res);
+    }
+
+    try {
+      const payment = await MpesaPayment.findOne({
+        checkoutRequestId: callback.checkoutRequestId,
+      });
+
+      if (!payment) {
+        console.error(
+          "M-Pesa callback has no matching payment:",
+          callback.checkoutRequestId
+        );
+
+        return acknowledgeSafaricom(res);
+      }
+
+      // Duplicate callbacks must never reapply a payment.
+      if (payment.status === "SUCCESS") {
+        return acknowledgeSafaricom(res);
+      }
+
+      payment.callbackPayload = req.body;
+      payment.callbackReceivedAt = new Date();
+      payment.resultCode = callback.resultCode;
+      payment.resultDescription = callback.resultDescription;
+
+      if (callback.resultCode !== 0) {
+        payment.status = "FAILED";
+        payment.completedAt = new Date();
+
+        await payment.save();
+
+        await Order.updateOne(
+          {
+            _id: payment.order,
+            activeMpesaPayment: payment._id,
+            paymentStatus: "UNPAID",
+          },
+          {
+            $set: {
+              paymentRequestInProgress: false,
+            },
+          }
+        );
+
+        return acknowledgeSafaricom(res);
+      }
+
+      // Successful callbacks must contain all required metadata.
+      if (
+        !Number.isSafeInteger(callback.amount) ||
+        callback.amount !== payment.amount ||
+        !callback.receiptNumber ||
+        !callback.phoneNumber ||
+        String(callback.phoneNumber) !== payment.phoneNumber
+      ) {
+        payment.status = "FAILED";
+        payment.resultDescription =
+          "Callback amount, phone number or receipt did not match the payment request.";
+        payment.completedAt = new Date();
+
+        await payment.save();
+
+        console.error(
+          "M-Pesa callback verification mismatch:",
+          callback.checkoutRequestId
+        );
+
+        return acknowledgeSafaricom(res);
+      }
+
+      const session = await mongoose.startSession();
+
+      try {
+        await session.withTransaction(async () => {
+          const updatedPayment = await MpesaPayment.findOneAndUpdate(
+            {
+              _id: payment._id,
+              status: { $in: ["INITIATED", "PENDING"] },
+            },
+            {
+              $set: {
+                status: "SUCCESS",
+                mpesaReceiptNumber: callback.receiptNumber,
+                resultCode: callback.resultCode,
+                resultDescription: callback.resultDescription,
+                callbackReceivedAt: new Date(),
+                callbackPayload: req.body,
+                completedAt: new Date(),
+              },
+            },
+            {
+              new: true,
+              session,
+            }
+          );
+
+          if (!updatedPayment) {
+            return;
+          }
+
+          const order = await Order.findOneAndUpdate(
+            {
+              _id: payment.order,
+              customer: payment.customer,
+              status: "READY_FOR_DELIVERY",
+              paymentStatus: "UNPAID",
+              totalAmount: payment.amount,
+              activeMpesaPayment: payment._id,
+            },
+            {
+              $set: {
+                paymentStatus: "CONFIRMED",
+                paymentConfirmedAt: new Date(),
+                paymentConfirmedBy: null,
+                paymentRequestInProgress: false,
+              },
+            },
+            {
+              new: true,
+              session,
+            }
+          );
+
+          if (!order) {
+            throw new Error(
+              "Payment succeeded, but the order did not match the expected state. Manual reconciliation is required."
+            );
+          }
+        });
+      } finally {
+        await session.endSession();
+      }
+
+      const updatedOrder = await Order.findById(payment.order);
+
+      if (updatedOrder?.paymentStatus === "CONFIRMED") {
+        await createNotification({
+          userId: payment.customer,
+          title: "M-Pesa payment confirmed",
+          message: `Your payment of KSh ${payment.amount} was received. Receipt: ${callback.receiptNumber}.`,
+          type: "PAYMENT_CONFIRMED",
+          orderId: payment.order,
+          data: {
+            paymentStatus: "CONFIRMED",
+            receiptNumber: callback.receiptNumber,
+            amount: payment.amount,
+          },
+        }).catch((error) => {
+          console.error("Payment notification error:", error.message);
+        });
+      }
+    } catch (error) {
+      console.error("M-Pesa callback processing error:", error);
+    }
+
+    return acknowledgeSafaricom(res);
+  }
+);
+
+export default router;

@@ -4,7 +4,6 @@ import mongoose from "mongoose";
 
 import Order from "../models/Order.js";
 import MpesaPayment from "../models/MpesaPayment.js";
-import User from "../models/User.js";
 
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 
