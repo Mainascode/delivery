@@ -1,4 +1,3 @@
-
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "./services/api";
@@ -11,17 +10,15 @@ const ACTIVE_STATUSES = [
 ];
 
 function formatStatus(status = "PENDING") {
-  return status
-    .replaceAll("_", " ")
-    .toLowerCase()
+  return status.replaceAll("_", " ").toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function statusClass(status) {
-  if (["COMPLETED", "CONFIRMED"].includes(status)) {
+  if (["COMPLETED", "CONFIRMED", "SUCCESS"].includes(status)) {
     return "status-badge status-success";
   }
-  if (["CANCELLED", "REJECTED"].includes(status)) {
+  if (["CANCELLED", "REJECTED", "FAILED"].includes(status)) {
     return "status-badge status-danger";
   }
   if (ACTIVE_STATUSES.includes(status)) {
@@ -44,8 +41,11 @@ function formatDate(value) {
   });
 }
 
-function getErrorMessage(error, fallback) {
-  return error?.message || fallback;
+function money(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? `KES ${amount.toLocaleString("en-KE")}`
+    : "Not available";
 }
 
 export default function Orders() {
@@ -63,6 +63,8 @@ export default function Orders() {
     notes: "",
   });
   const [confirmAction, setConfirmAction] = useState(null);
+  const [phoneNumbers, setPhoneNumbers] = useState({});
+  const [paymentInfo, setPaymentInfo] = useState({});
 
   const loadOrders = useCallback(async (refresh = false) => {
     try {
@@ -72,54 +74,75 @@ export default function Orders() {
 
       const data = await api("/api/orders");
       const latestOrders = data.orders || [];
-setOrders(latestOrders);
+      setOrders(latestOrders);
 
-// Close an edit form if the order is no longer pending.
-setEditingId((currentId) => {
-  if (!currentId) return "";
-
-  const currentOrder = latestOrders.find(
-    (order) => (order._id || order.id) === currentId
-  );
-
-  return currentOrder?.status === "PENDING" ? currentId : "";
-});
+      setEditingId((currentId) => {
+        if (!currentId) return "";
+        const currentOrder = latestOrders.find(
+          (order) => (order._id || order.id) === currentId
+        );
+        return currentOrder?.status === "PENDING" ? currentId : "";
+      });
     } catch (err) {
       console.error("Failed to load orders:", err);
-      setError(getErrorMessage(err, "Unable to load your orders."));
+      setError(err.message || "Unable to load your orders.");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-useEffect(() => {
-  loadOrders();
-
-  const refreshOrders = () => {
-    if (document.visibilityState === "visible") {
-      loadOrders(true);
+  const checkPayment = useCallback(async (id) => {
+    try {
+      const data = await api(`/api/orders/${id}/payment`);
+      setPaymentInfo((current) => ({ ...current, [id]: data }));
+      return data;
+    } catch (err) {
+      console.error(`Unable to check payment for ${id}:`, err);
+      return null;
     }
-  };
+  }, []);
 
-  // Refresh every 15 seconds while the page is visible.
-  const interval = setInterval(refreshOrders, 15000);
+  useEffect(() => {
+    loadOrders();
 
-  // Refresh when the customer returns to the page.
-  window.addEventListener("focus", refreshOrders);
-  document.addEventListener("visibilitychange", refreshOrders);
+    const refreshOrders = () => {
+      if (document.visibilityState === "visible") loadOrders(true);
+    };
 
-  return () => {
-    clearInterval(interval);
-    window.removeEventListener("focus", refreshOrders);
-    document.removeEventListener("visibilitychange", refreshOrders);
-  };
-}, [loadOrders]);
+    const interval = setInterval(refreshOrders, 15000);
+    window.addEventListener("focus", refreshOrders);
+    document.addEventListener("visibilitychange", refreshOrders);
 
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", refreshOrders);
+      document.removeEventListener("visibilitychange", refreshOrders);
+    };
+  }, [loadOrders]);
+
+  // Check payment records for orders that have entered the M-Pesa stage.
+  useEffect(() => {
+    const ids = orders
+      .filter((order) => order.status === "READY_FOR_DELIVERY")
+      .map((order) => order._id || order.id)
+      .filter(Boolean);
+
+    if (!ids.length) return;
+
+    const checkAll = () => {
+      if (document.visibilityState !== "visible") return;
+      ids.forEach((id) => checkPayment(id));
+    };
+
+    checkAll();
+    const interval = setInterval(checkAll, 10000);
+    return () => clearInterval(interval);
+  }, [orders, checkPayment]);
   function startEditing(order) {
     setNotice("");
     setError("");
-    setEditingId(order._id);
+    setEditingId(order._id || order.id);
     setEditForm({
       items: order.items || "",
       pickupLocation: order.pickupLocation || "",
@@ -164,7 +187,7 @@ useEffect(() => {
       setNotice("Your order details have been updated.");
       await loadOrders(true);
     } catch (err) {
-      setError(getErrorMessage(err, "Unable to update this order."));
+      setError(err.message || "Unable to update this order.");
     } finally {
       setBusyId("");
     }
@@ -177,35 +200,50 @@ useEffect(() => {
       setError("");
       setNotice("");
 
-      await api(`/api/orders/${id}/cancel`, {
-        method: "POST",
-      });
-
+      await api(`/api/orders/${id}/cancel`, { method: "POST" });
       setConfirmAction(null);
       setNotice(`${shortId(id)} has been cancelled.`);
       await loadOrders(true);
     } catch (err) {
-      setError(getErrorMessage(err, "Unable to cancel this order."));
+      setError(err.message || "Unable to cancel this order.");
     } finally {
       setBusyId("");
     }
   }
 
-  async function submitPayment(order) {
+  async function requestMpesaPayment(order) {
     const id = order._id || order.id;
+    const phoneNumber = (phoneNumbers[id] || "").trim();
+
+    if (!phoneNumber) {
+      setError("Enter the Safaricom phone number that should receive the M-Pesa prompt.");
+      return;
+    }
+
     try {
       setBusyId(id);
       setError("");
       setNotice("");
 
-      await api(`/api/orders/${id}/payment-submitted`, {
-        method: "PATCH",
+      const data = await api(`/api/orders/${id}/stk-push`, {
+        method: "POST",
+        body: JSON.stringify({ phoneNumber }),
       });
 
-      setNotice("Payment submitted. Please wait for admin confirmation.");
+      setPaymentInfo((current) => ({ ...current, [id]: data }));
+      setNotice(
+        data.message ||
+        "M-Pesa request sent. Check your phone and enter your M-Pesa PIN."
+      );
+
+      await checkPayment(id);
       await loadOrders(true);
     } catch (err) {
-      setError(getErrorMessage(err, "Unable to submit payment."));
+      setError(err.message || "Unable to initiate M-Pesa payment.");
+      // Refresh the payment record because Safaricom may have received
+      // the request even if the browser did not receive its response.
+      await checkPayment(id);
+      await loadOrders(true);
     } finally {
       setBusyId("");
     }
@@ -218,15 +256,12 @@ useEffect(() => {
       setError("");
       setNotice("");
 
-      await api(`/api/orders/${id}/complete`, {
-        method: "PATCH",
-      });
-
+      await api(`/api/orders/${id}/complete`, { method: "PATCH" });
       setConfirmAction(null);
       setNotice("Order completed. Thanks for using NITUME!");
       await loadOrders(true);
     } catch (err) {
-      setError(getErrorMessage(err, "Unable to complete this order."));
+      setError(err.message || "Unable to complete this order.");
     } finally {
       setBusyId("");
     }
@@ -234,7 +269,6 @@ useEffect(() => {
 
   async function runConfirmedAction() {
     if (!confirmAction) return;
-
     const { type, order } = confirmAction;
     if (type === "cancel") await cancelOrder(order);
     if (type === "complete") await completeOrder(order);
@@ -247,9 +281,7 @@ useEffect(() => {
           <div>
             <div className="eyebrow">YOUR ACTIVITY</div>
             <h1>My orders</h1>
-            <p className="page-description">
-              Loading your requests and deliveries...
-            </p>
+            <p className="page-description">Loading your requests and deliveries...</p>
           </div>
         </div>
         <div className="loading-card">
@@ -267,10 +299,9 @@ useEffect(() => {
           <div className="eyebrow">YOUR ACTIVITY</div>
           <h1>My orders</h1>
           <p className="page-description">
-            Track your requests, update pending orders, and confirm delivery.
+            Track your requests, pay securely, and confirm delivery.
           </p>
         </div>
-
         <button
           type="button"
           className="btn btn-secondary"
@@ -284,18 +315,14 @@ useEffect(() => {
       {error && (
         <div className="nitume-feedback nitume-feedback-error" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => setError("")} aria-label="Dismiss error">
-            ×
-          </button>
+          <button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button>
         </div>
       )}
 
       {notice && (
         <div className="nitume-feedback nitume-feedback-success" role="status">
           <span>{notice}</span>
-          <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message">
-            ×
-          </button>
+          <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message">×</button>
         </div>
       )}
 
@@ -313,14 +340,23 @@ useEffect(() => {
           {orders.map((order) => {
             const id = order._id || order.id;
             const status = order.status || "PENDING";
-            const paymentStatus = order.paymentStatus || "UNPAID";
+            const orderPayment = paymentInfo[id];
+            const payment = orderPayment?.payment || {};
+            const paymentStatus =
+              orderPayment?.paymentStatus ||
+              payment.status ||
+              order.paymentStatus ||
+              "UNPAID";
             const pending = status === "PENDING";
             const busy = busyId === id;
             const editing = editingId === id;
             const canSubmitPayment =
-              status === "READY_FOR_DELIVERY" && paymentStatus === "UNPAID";
+              status === "READY_FOR_DELIVERY" &&
+              paymentStatus === "UNPAID" &&
+              !["PENDING", "INITIATED", "REVIEW_REQUIRED"].includes(payment.status);
             const canComplete =
-              status === "READY_FOR_DELIVERY" && paymentStatus === "CONFIRMED";
+              status === "READY_FOR_DELIVERY" &&
+              paymentStatus === "CONFIRMED";
 
             return (
               <article className="order-card customer-order-card" key={id}>
@@ -330,9 +366,7 @@ useEffect(() => {
                     <h2>{shortId(id)}</h2>
                     <span className="order-date">{formatDate(order.createdAt)}</span>
                   </div>
-                  <span className={statusClass(status)}>
-                    {formatStatus(status)}
-                  </span>
+                  <span className={statusClass(status)}>{formatStatus(status)}</span>
                 </div>
 
                 <div className="customer-order-details">
@@ -350,11 +384,7 @@ useEffect(() => {
                   </div>
                   <div className="customer-order-detail">
                     <span className="order-meta-label">DELIVERY FEE</span>
-                    <strong className="order-fee">
-                      {order.deliveryFee != null
-                        ? `KES ${Number(order.deliveryFee).toLocaleString("en-KE")}`
-                        : "Not available"}
-                    </strong>
+                    <strong className="order-fee">{money(order.deliveryFee)}</strong>
                   </div>
                 </div>
 
@@ -365,22 +395,85 @@ useEffect(() => {
                   </div>
                 )}
 
-                <div className="customer-payment-panel">
-                  <div>
-                    <span className="order-meta-label">PAYMENT STATUS</span>
-                    <strong>{formatStatus(paymentStatus)}</strong>
+                {status === "READY_FOR_DELIVERY" && (
+                  <div className="customer-payment-panel">
+                    <div>
+                      <span className="order-meta-label">PAYMENT BREAKDOWN</span>
+                      <div className="customer-order-detail">
+                        <span>Shopping cost</span>
+                        <strong>{money(order.shoppingCost)}</strong>
+                      </div>
+                      <div className="customer-order-detail">
+                        <span>Delivery fee</span>
+                        <strong>{money(order.deliveryFee)}</strong>
+                      </div>
+                      <div className="customer-order-detail">
+                        <span><strong>Total to pay</strong></span>
+                        <strong className="order-fee">{money(order.totalAmount)}</strong>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="order-meta-label">M-PESA PAYMENT STATUS</span>
+                      <strong>{formatStatus(paymentStatus)}</strong>
+                      {payment.mpesaReceiptNumber && (
+                        <p className="customer-order-hint">
+                          Receipt: <strong>{payment.mpesaReceiptNumber}</strong>
+                        </p>
+                      )}
+                      {paymentStatus === "CONFIRMED" && (
+                        <p className="customer-order-hint">
+                          ✓ Payment verified. You can now confirm delivery.
+                        </p>
+                      )}
+                      {paymentStatus === "REVIEW_REQUIRED" && (
+                        <p className="customer-order-hint">
+                          Your payment is being checked. Do not send another payment.
+                          Contact NITUME support if this status does not change.
+                        </p>
+                      )}
+                      {["PENDING", "INITIATED"].includes(paymentStatus) && (
+                        <p className="customer-order-hint">
+                          M-Pesa request is being processed. Check your phone and
+                          enter your PIN if prompted. This page checks for updates.
+                        </p>
+                      )}
+                      {paymentStatus === "FAILED" && (
+                        <p className="customer-order-hint">
+                          The previous payment attempt failed. You can try again.
+                        </p>
+                      )}
+                    </div>
+
+                    {canSubmitPayment && (
+                      <div className="order-edit-form">
+                        <label>
+                          Safaricom M-Pesa phone number
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            placeholder="07XXXXXXXX or 2547XXXXXXXX"
+                            value={phoneNumbers[id] || ""}
+                            onChange={(event) =>
+                              setPhoneNumbers((current) => ({
+                                ...current,
+                                [id]: event.target.value,
+                              }))
+                            }
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => requestMpesaPayment(order)}
+                          disabled={busy}
+                        >
+                          {busy ? "Sending request..." : `Pay ${money(order.totalAmount)} with M-Pesa`}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {paymentStatus === "CUSTOMER_MARKED_PAID" && (
-                    <p className="customer-order-hint">
-                      Your payment report is waiting for admin confirmation.
-                    </p>
-                  )}
-                  {paymentStatus === "CONFIRMED" && status === "READY_FOR_DELIVERY" && (
-                    <p className="customer-order-hint">
-                      Payment confirmed. You can now complete this order.
-                    </p>
-                  )}
-                </div>
+                )}
 
                 {editing && pending && (
                   <form
@@ -394,61 +487,43 @@ useEffect(() => {
                       <h3>Edit your request</h3>
                       <p>Changes are available only before the order is accepted.</p>
                     </div>
-
                     <label>
                       Items / shopping list
                       <textarea
                         rows={3}
                         value={editForm.items}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, items: event.target.value })
-                        }
+                        onChange={(event) => setEditForm({ ...editForm, items: event.target.value })}
                         required
                       />
                     </label>
-
                     <label>
                       Pickup / shop location
                       <input
                         value={editForm.pickupLocation}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, pickupLocation: event.target.value })
-                        }
+                        onChange={(event) => setEditForm({ ...editForm, pickupLocation: event.target.value })}
                       />
                     </label>
-
                     <label>
                       Delivery location
                       <input
                         value={editForm.deliveryLocation}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, deliveryLocation: event.target.value })
-                        }
+                        onChange={(event) => setEditForm({ ...editForm, deliveryLocation: event.target.value })}
                         required
                       />
                     </label>
-
                     <label>
                       Notes
                       <textarea
                         rows={2}
                         value={editForm.notes}
-                        onChange={(event) =>
-                          setEditForm({ ...editForm, notes: event.target.value })
-                        }
+                        onChange={(event) => setEditForm({ ...editForm, notes: event.target.value })}
                       />
                     </label>
-
                     <div className="order-action-row">
                       <button className="btn btn-primary" type="submit" disabled={busy}>
                         {busy ? "Saving..." : "Save changes"}
                       </button>
-                      <button
-                        className="btn btn-secondary"
-                        type="button"
-                        onClick={stopEditing}
-                        disabled={busy}
-                      >
+                      <button className="btn btn-secondary" type="button" onClick={stopEditing} disabled={busy}>
                         Keep original
                       </button>
                     </div>
@@ -456,15 +531,9 @@ useEffect(() => {
                 )}
 
                 <div className="customer-order-actions">
-
                   {pending && !editing && (
                     <>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => startEditing(order)}
-                        disabled={busy}
-                      >
+                      <button type="button" className="btn btn-secondary" onClick={() => startEditing(order)} disabled={busy}>
                         Edit order
                       </button>
                       <button
@@ -477,18 +546,6 @@ useEffect(() => {
                       </button>
                     </>
                   )}
-
-                  {canSubmitPayment && (
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => setConfirmAction({ type: "payment", order })}
-                      disabled={busy}
-                    >
-                      {busy ? "Submitting..." : "I’ve paid"}
-                    </button>
-                  )}
-
                   {canComplete && (
                     <button
                       type="button"
@@ -503,8 +560,8 @@ useEffect(() => {
 
                 {ACTIVE_STATUSES.includes(status) && !pending && (
                   <p className="customer-order-hint">
-                    {status === "OUT_FOR_DELIVERY"
-                      ? "Your order is on its way. Confirm payment and delivery when ready."
+                    {status === "READY_FOR_DELIVERY"
+                      ? "Your shopping is complete. Review the amount and pay using the M-Pesa prompt."
                       : "Your order is being processed. You’ll see the next step here."}
                   </p>
                 )}
@@ -519,9 +576,7 @@ useEffect(() => {
           className="nitume-modal-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !busyId) {
-              setConfirmAction(null);
-            }
+            if (event.target === event.currentTarget && !busyId) setConfirmAction(null);
           }}
         >
           <section
@@ -531,29 +586,18 @@ useEffect(() => {
             aria-labelledby="customer-order-confirm-title"
           >
             <div className="nitume-modal-icon">
-              {confirmAction.type === "cancel"
-                ? "!"
-                : confirmAction.type === "payment"
-                  ? "KSh"
-                  : "✓"}
+              {confirmAction.type === "cancel" ? "!" : "✓"}
             </div>
-
             <h2 id="customer-order-confirm-title">
               {confirmAction.type === "cancel"
                 ? "Cancel this order?"
-                : confirmAction.type === "payment"
-                  ? "Submit payment for confirmation?"
-                  : "Confirm delivery completed?"}
+                : "Confirm delivery completed?"}
             </h2>
-
             <p>
               {confirmAction.type === "cancel"
                 ? "You can place another request after this order is cancelled."
-                : confirmAction.type === "payment"
-                  ? "Only continue if you have actually made the payment. The admin will still need to confirm receipt."
-                  : "Only confirm if you have received your order and the admin has confirmed your payment."}
+                : "Only confirm if you have received your order. Payment must already be verified."}
             </p>
-
             <div className="order-action-row">
               <button
                 type="button"
@@ -565,29 +609,11 @@ useEffect(() => {
               </button>
               <button
                 type="button"
-                className={
-                  confirmAction.type === "cancel"
-                    ? "btn btn-danger"
-                    : "btn btn-primary"
-                }
-                onClick={() => {
-                  if (confirmAction.type === "payment") {
-                    const order = confirmAction.order;
-                    setConfirmAction(null);
-                    submitPayment(order);
-                  } else {
-                    runConfirmedAction();
-                  }
-                }}
+                className={confirmAction.type === "cancel" ? "btn btn-danger" : "btn btn-primary"}
+                onClick={runConfirmedAction}
                 disabled={Boolean(busyId)}
               >
-                {busyId
-                  ? "Please wait..."
-                  : confirmAction.type === "cancel"
-                    ? "Yes, cancel"
-                    : confirmAction.type === "payment"
-                      ? "Submit payment"
-                      : "Complete order"}
+                {busyId ? "Please wait..." : confirmAction.type === "cancel" ? "Yes, cancel" : "Complete order"}
               </button>
             </div>
           </section>

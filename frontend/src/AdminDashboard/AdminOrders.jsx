@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../services/api";
@@ -22,18 +21,14 @@ const actionLabels = {
 };
 
 function formatStatus(status = "UNKNOWN") {
-  return status
-    .replaceAll("_", " ")
-    .toLowerCase()
+  return status.replaceAll("_", " ").toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function getStatusClass(status) {
   if (status === "COMPLETED") return "completed";
   if (["CANCELLED", "REJECTED"].includes(status)) return "cancelled";
-  if (["ACCEPTED", "SHOPPING", "READY_FOR_DELIVERY"].includes(status)) {
-    return "active";
-  }
+  if (["ACCEPTED", "SHOPPING", "READY_FOR_DELIVERY"].includes(status)) return "active";
   return "pending";
 }
 
@@ -41,11 +36,17 @@ function formatDate(value) {
   if (!value) return "Unknown date";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown date";
-
   return date.toLocaleString("en-KE", {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function money(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? `KES ${amount.toLocaleString("en-KE")}`
+    : "Not available";
 }
 
 function getShortId(order) {
@@ -65,6 +66,7 @@ export default function AdminOrders() {
   const [notice, setNotice] = useState("");
   const [updatingId, setUpdatingId] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [shoppingCosts, setShoppingCosts] = useState({});
 
   const loadOrders = useCallback(async (refresh = false) => {
     try {
@@ -73,7 +75,19 @@ export default function AdminOrders() {
       else setLoading(true);
 
       const data = await api("/api/orders/admin");
-      setOrders(data.orders || []);
+      const latestOrders = data.orders || [];
+      setOrders(latestOrders);
+
+      setShoppingCosts((current) => {
+        const next = { ...current };
+        latestOrders.forEach((order) => {
+          const id = order._id || order.id;
+          if (id && next[id] === undefined && order.shoppingCost != null) {
+            next[id] = String(order.shoppingCost);
+          }
+        });
+        return next;
+      });
     } catch (err) {
       setError(err.message || "Unable to load orders.");
     } finally {
@@ -81,9 +95,54 @@ export default function AdminOrders() {
       setRefreshing(false);
     }
   }, []);
+
   useEffect(() => {
     loadOrders();
   }, [loadOrders]);
+
+  function shortOrder(order) {
+    return `#${getShortId(order)}`;
+  }
+
+  async function saveShoppingCost(order) {
+    const id = order._id || order.id;
+    const rawValue = shoppingCosts[id];
+
+    if (!id || updatingId) return;
+
+    if (rawValue === undefined || String(rawValue).trim() === "") {
+      setError("Enter the actual shopping cost first.");
+      return;
+    }
+
+    const shoppingCost = Number(rawValue);
+    if (!Number.isSafeInteger(shoppingCost) || shoppingCost < 0) {
+      setError("Shopping cost must be a whole number of KES (zero or more).");
+      return;
+    }
+
+    try {
+      setUpdatingId(id);
+      setError("");
+      setNotice("");
+
+      const data = await api(`/api/orders/${id}/shopping-cost`, {
+        method: "PATCH",
+        body: JSON.stringify({ shoppingCost }),
+      });
+
+      setNotice(
+        `Shopping cost saved for ${shortOrder(order)}. Total: ${money(
+          data.totalAmount ?? shoppingCost + Number(order.deliveryFee || 0)
+        )}.`
+      );
+      await loadOrders(true);
+    } catch (err) {
+      setError(err.message || "Unable to save shopping cost.");
+    } finally {
+      setUpdatingId("");
+    }
+  }
 
   async function updateStatus(order, status) {
     const id = order._id || order.id;
@@ -93,6 +152,29 @@ export default function AdminOrders() {
     if (!permitted.includes(status)) {
       setError("That status change is not allowed.");
       return;
+    }
+
+    if (status === "READY_FOR_DELIVERY") {
+      const shoppingCost = Number(order.shoppingCost);
+      const deliveryFee = Number(order.deliveryFee);
+      const totalAmount = Number(order.totalAmount);
+
+      if (
+        !Number.isSafeInteger(shoppingCost) ||
+        shoppingCost < 0 ||
+        !Number.isSafeInteger(deliveryFee) ||
+        deliveryFee < 0 ||
+        !Number.isSafeInteger(totalAmount) ||
+        totalAmount !== shoppingCost + deliveryFee
+      ) {
+        setError("Save a valid shopping cost before marking this order ready.");
+        return;
+      }
+
+      if (order.paymentStatus !== "UNPAID") {
+        setError("This order's payment state does not allow this status change.");
+        return;
+      }
     }
 
     try {
@@ -115,39 +197,10 @@ export default function AdminOrders() {
     }
   }
 
-  async function confirmPayment(order) {
-    const id = order._id || order.id;
-    if (!id || updatingId) return;
-
-    try {
-      setUpdatingId(id);
-      setError("");
-      setNotice("");
-
-      await api(`/api/orders/${id}/payment-confirmation`, {
-        method: "PATCH",
-      });
-
-      setConfirmAction(null);
-      setNotice(`Payment confirmed for ${shortOrder(order)}.`);
-      await loadOrders(true);
-    } catch (err) {
-      setError(err.message || "Unable to confirm payment.");
-    } finally {
-      setUpdatingId("");
-    }
-  }
-
-  function shortOrder(order) {
-    return `#${getShortId(order)}`;
-  }
-
   async function runConfirmedAction() {
     if (!confirmAction) return;
-
-    const { order, type, status } = confirmAction;
-    if (type === "status") await updateStatus(order, status);
-    if (type === "payment") await confirmPayment(order);
+    const { order, status } = confirmAction;
+    await updateStatus(order, status);
   }
 
   return (
@@ -157,10 +210,9 @@ export default function AdminOrders() {
           <span className="eyebrow">OPERATIONS</span>
           <h1>Customer orders</h1>
           <p>
-            Review requests, manage delivery progress, and verify customer payments.
+            Review requests, manage shopping, set the final amount, and track verified payments.
           </p>
         </div>
-
         <button
           type="button"
           className="btn btn-secondary"
@@ -174,9 +226,7 @@ export default function AdminOrders() {
       <div className="admin-order-summary-strip">
         <div>
           <span>Incoming</span>
-          <strong>
-            {orders.filter((order) => order.status === "PENDING").length}
-          </strong>
+          <strong>{orders.filter((order) => order.status === "PENDING").length}</strong>
         </div>
         <div>
           <span>In progress</span>
@@ -189,13 +239,13 @@ export default function AdminOrders() {
           </strong>
         </div>
         <div>
-          <span>Payments to verify</span>
+          <span>Awaiting M-Pesa</span>
           <strong>
             {
               orders.filter(
                 (order) =>
                   order.status === "READY_FOR_DELIVERY" &&
-                  order.paymentStatus === "CUSTOMER_MARKED_PAID"
+                  order.paymentStatus !== "CONFIRMED"
               ).length
             }
           </strong>
@@ -205,18 +255,14 @@ export default function AdminOrders() {
       {error && (
         <div className="nitume-feedback nitume-feedback-error" role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => setError("")} aria-label="Dismiss error">
-            ×
-          </button>
+          <button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button>
         </div>
       )}
 
       {notice && (
         <div className="nitume-feedback nitume-feedback-success" role="status">
           <span>{notice}</span>
-          <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message">
-            ×
-          </button>
+          <button type="button" onClick={() => setNotice("")} aria-label="Dismiss message">×</button>
         </div>
       )}
 
@@ -239,10 +285,24 @@ export default function AdminOrders() {
             const customer = order.customer || {};
             const actions = allowedActions[currentStatus] || [];
             const isUpdating = updatingId === id;
-            const paymentStatus = order.paymentStatus || "UNPAID";
-            const paymentNeedsConfirmation =
-              currentStatus === "READY_FOR_DELIVERY" &&
-              paymentStatus === "CUSTOMER_MARKED_PAID";
+                        const paymentStatus =
+              orderPayment?.payment?.status === "SUCCESS" ||
+              orderPayment?.paymentStatus === "CONFIRMED"
+                ? "CONFIRMED"
+                : orderPayment?.payment?.status ||
+                  orderPayment?.paymentStatus ||
+                  order.paymentStatus ||
+                  "UNPAID";
+            const shoppingCost = Number(order.shoppingCost);
+            const deliveryFee = Number(order.deliveryFee);
+            const totalAmount = Number(order.totalAmount);
+            const validSavedTotal =
+              Number.isSafeInteger(shoppingCost) &&
+              shoppingCost >= 0 &&
+              Number.isSafeInteger(deliveryFee) &&
+              deliveryFee >= 0 &&
+              Number.isSafeInteger(totalAmount) &&
+              totalAmount === shoppingCost + deliveryFee;
 
             return (
               <article className="admin-order-card" key={id}>
@@ -258,9 +318,7 @@ export default function AdminOrders() {
                 </div>
 
                 <div className="admin-customer">
-                  <div className="customer-avatar">
-                    {getCustomerInitial(order)}
-                  </div>
+                  <div className="customer-avatar">{getCustomerInitial(order)}</div>
                   <div>
                     <strong>{customer.name || "Customer"}</strong>
                     {customer.phone && <p>{customer.phone}</p>}
@@ -283,11 +341,7 @@ export default function AdminOrders() {
                   </div>
                   <div>
                     <span>DELIVERY FEE</span>
-                    <p>
-                      {order.deliveryFee != null
-                        ? `KES ${Number(order.deliveryFee).toLocaleString("en-KE")}`
-                        : "Not available"}
-                    </p>
+                    <p>{money(order.deliveryFee)}</p>
                   </div>
                 </div>
 
@@ -298,35 +352,92 @@ export default function AdminOrders() {
                   </div>
                 )}
 
+                {currentStatus === "SHOPPING" && (
+                  <div className="admin-payment-panel">
+                    <span className="order-meta-label">FINAL SHOPPING COST</span>
+                    <p className="updating-text">
+                      Enter what you actually spent buying the customer's items.
+                    </p>
+                    <label>
+                      Shopping cost (KES)
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        value={
+                          shoppingCosts[id] ??
+                          (order.shoppingCost != null ? String(order.shoppingCost) : "")
+                        }
+                        onChange={(event) =>
+                          setShoppingCosts((current) => ({
+                            ...current,
+                            [id]: event.target.value,
+                          }))
+                        }
+                        placeholder="e.g. 850"
+                        disabled={Boolean(updatingId)}
+                      />
+                    </label>
+                    <div className="customer-order-detail">
+                      <span>Delivery fee</span>
+                      <strong>{money(order.deliveryFee)}</strong>
+                    </div>
+                    <div className="customer-order-detail">
+                      <span><strong>Total customer payment</strong></span>
+                      <strong>
+                        {shoppingCosts[id] !== undefined &&
+                        shoppingCosts[id].trim() !== "" &&
+                        Number.isSafeInteger(Number(shoppingCosts[id])) &&
+                        Number(shoppingCosts[id]) >= 0
+                          ? money(Number(shoppingCosts[id]) + Number(order.deliveryFee || 0))
+                          : order.totalAmount != null
+                            ? money(order.totalAmount)
+                            : "Save shopping cost to calculate"}
+                      </strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => saveShoppingCost(order)}
+                      disabled={Boolean(updatingId)}
+                    >
+                      {isUpdating ? "Saving..." : "Save shopping cost"}
+                    </button>
+                    {order.shoppingCost != null && (
+                      <p className="updating-text">
+                        Saved shopping cost: {money(order.shoppingCost)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="admin-payment-panel">
                   <div>
-                    <span className="order-meta-label">PAYMENT STATUS</span>
+                    <span className="order-meta-label">M-PESA PAYMENT STATUS</span>
                     <strong>{formatStatus(paymentStatus)}</strong>
                   </div>
-
-                  {paymentNeedsConfirmation ? (
-                    <div className="admin-payment-action">
-                      <p>
-                        Customer says they have paid. Verify receipt before confirming.
-                      </p>
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={Boolean(updatingId)}
-                        onClick={() =>
-                          setConfirmAction({ type: "payment", order })
-                        }
-                      >
-                        {isUpdating ? "Confirming..." : "Confirm payment"}
-                      </button>
-                    </div>
-                  ) : paymentStatus === "CONFIRMED" ? (
+                  {paymentStatus === "CONFIRMED" ? (
                     <span className="admin-payment-confirmed">
-                      ✓ Payment confirmed
+                      ✓ Payment verified by Safaricom callback
                     </span>
+                  ) : currentStatus === "READY_FOR_DELIVERY" ? (
+                    <p className="updating-text">
+                      Waiting for the customer's M-Pesa payment to be verified.
+                    </p>
                   ) : (
                     <p className="updating-text">
-                      Waiting for the customer to submit payment.
+                      Payment becomes available after shopping cost is saved and the order is ready.
+                    </p>
+                  )}
+                  {order.mpesaReceiptNumber && (
+                    <p className="updating-text">
+                      M-Pesa receipt: <strong>{order.mpesaReceiptNumber}</strong>
+                    </p>
+                  )}
+                  {paymentStatus === "REVIEW_REQUIRED" && (
+                    <p className="updating-text">
+                      Payment requires reconciliation. Do not ask the customer to pay again.
                     </p>
                   )}
                 </div>
@@ -334,36 +445,45 @@ export default function AdminOrders() {
                 <div className="admin-order-actions">
                   <div className="admin-order-actions-header">
                     <strong>
-                      {currentStatus === "PENDING"
-                        ? "Review this request"
-                        : "Delivery progress"}
+                      {currentStatus === "PENDING" ? "Review this request" : "Delivery progress"}
                     </strong>
-                    {isUpdating && (
-                      <span className="updating-text">Updating...</span>
-                    )}
+                    {isUpdating && <span className="updating-text">Updating...</span>}
                   </div>
 
                   {actions.length > 0 ? (
                     <div className="status-actions">
-                      {actions.map((status) => (
-                        <button
-                          type="button"
-                          key={status}
-                          className={`status-action ${
-                            ["REJECTED", "CANCELLED"].includes(status)
-                              ? "danger"
-                              : status === "ACCEPTED"
-                                ? "selected"
-                                : ""
-                          }`}
-                          disabled={Boolean(updatingId)}
-                          onClick={() =>
-                            setConfirmAction({ type: "status", order, status })
-                          }
-                        >
-                          {actionLabels[status] || formatStatus(status)}
-                        </button>
-                      ))}
+                      {actions.map((status) => {
+                        const readyBlocked =
+                          status === "READY_FOR_DELIVERY" &&
+                          (
+                            !validSavedTotal ||
+                            paymentStatus !== "UNPAID" ||
+                            order.paymentRequestInProgress === true
+                          );
+
+                        return (
+                          <button
+                            type="button"
+                            key={status}
+                            className={`status-action ${
+                              ["REJECTED", "CANCELLED"].includes(status)
+                                ? "danger"
+                                : status === "ACCEPTED"
+                                  ? "selected"
+                                  : ""
+                            }`}
+                            disabled={Boolean(updatingId) || readyBlocked}
+                            title={
+                              readyBlocked
+                                ? "Save a valid shopping cost and ensure payment has not started."
+                                : undefined
+                            }
+                            onClick={() => setConfirmAction({ type: "status", order, status })}
+                          >
+                            {actionLabels[status] || formatStatus(status)}
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
                     <p className="updating-text">
@@ -375,7 +495,7 @@ export default function AdminOrders() {
 
                   {currentStatus === "READY_FOR_DELIVERY" && (
                     <p className="updating-text">
-                      The customer completes the order after payment has been confirmed.
+                      The customer completes the order after M-Pesa payment is verified.
                     </p>
                   )}
                 </div>
@@ -407,22 +527,14 @@ export default function AdminOrders() {
             aria-modal="true"
             aria-labelledby="admin-order-confirm-title"
           >
-            <div className="nitume-modal-icon">
-              {confirmAction.type === "payment" ? "✓" : "!"}
-            </div>
-
+            <div className="nitume-modal-icon">!</div>
             <h2 id="admin-order-confirm-title">
-              {confirmAction.type === "payment"
-                ? "Confirm payment received?"
-                : `${actionLabels[confirmAction.status] || "Update order"}?`}
+              {actionLabels[confirmAction.status] || "Update order"}?
             </h2>
-
             <p>
-              {confirmAction.type === "payment"
-                ? "Confirm only after you have independently verified that the payment was received."
-                : `You are about to change ${shortOrder(confirmAction.order)} to ${formatStatus(confirmAction.status)}.`}
+              You are about to change {shortOrder(confirmAction.order)} to{" "}
+              {formatStatus(confirmAction.status)}.
             </p>
-
             <div className="order-action-row">
               <button
                 type="button"
@@ -438,11 +550,7 @@ export default function AdminOrders() {
                 onClick={runConfirmedAction}
                 disabled={Boolean(updatingId)}
               >
-                {updatingId
-                  ? "Please wait..."
-                  : confirmAction.type === "payment"
-                    ? "Confirm payment"
-                    : "Confirm change"}
+                {updatingId ? "Please wait..." : "Confirm change"}
               </button>
             </div>
           </section>

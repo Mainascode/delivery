@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import mpesaRoutes from "./routes/mpesa.js";
 
 import { requireAuth, requireAdmin } from "./middleware/auth.js";
 import User from "./models/User.js";
@@ -24,6 +25,7 @@ credentials: true,
 );
 
 app.use(express.json());
+app.use("/api", mpesaRoutes);
 
 /* =========================
 NOTIFICATIONS
@@ -484,176 +486,31 @@ error: "Invalid order ID.",
 
 
 /* =========================
-   CUSTOMER: SUBMIT PAYMENT
-   Customer reports that payment
-   has been made; this is not
-   automatic payment verification.
+   LEGACY MANUAL PAYMENT ROUTES
+   Payment confirmation is now
+   handled only by verified M-Pesa callbacks.
 ========================= */
 
 app.patch(
   "/api/orders/:id/payment-submitted",
   requireAuth,
   async (req, res) => {
-    try {
-      if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid order ID.",
-        });
-      }
-
-      const order = await Order.findOneAndUpdate(
-        {
-          _id: req.params.id,
-          customer: req.user._id,
-          status: "READY_FOR_DELIVERY",
-          paymentStatus: "UNPAID",
-        },
-        {
-          $set: {
-            paymentStatus: "CUSTOMER_MARKED_PAID",
-            paymentSubmittedAt: new Date(),
-          },
-        },
-        { new: true, runValidators: true }
-      );
-
-      if (!order) {
-        const existing = await Order.findOne({
-          _id: req.params.id,
-          customer: req.user._id,
-        });
-
-        if (!existing) {
-          return res.status(404).json({
-            success: false,
-            error: "Order not found.",
-          });
-        }
-
-        return res.status(409).json({
-          success: false,
-          error:
-            existing.paymentStatus === "CONFIRMED"
-              ? "Payment has already been confirmed."
-              : existing.status !== "READY_FOR_DELIVERY"
-                ? "Payment can only be submitted when your order is ready for delivery."
-                : "Payment has already been submitted for confirmation.",
-        });
-      }
-
-      const admins = await User.find({ role: "ADMIN" }).select("_id");
-
-      await Promise.allSettled(
-        admins.map((admin) =>
-          createNotification({
-            userId: admin._id,
-            title: "Payment submitted",
-            message: `Customer reports payment for order #${String(order._id).slice(-6)}. Please verify receipt.`,
-            type: "PAYMENT_SUBMITTED",
-            orderId: order._id,
-            data: { paymentStatus: order.paymentStatus },
-          })
-        )
-      );
-
-      return res.json({
-        success: true,
-        message: "Payment submitted for confirmation.",
-        order,
-      });
-    } catch (error) {
-      console.error("Payment submission error:", error);
-
-      return res.status(500).json({
-        success: false,
-        error: "Failed to submit payment.",
-      });
-    }
+    return res.status(410).json({
+      success: false,
+      error: "Manual payment submission is no longer supported. Please use M-Pesa STK Push.",
+    });
   }
 );
-
-
-/* =========================
-   ADMIN: CONFIRM PAYMENT
-========================= */
 
 app.patch(
   "/api/orders/:id/payment-confirmation",
   requireAuth,
   requireAdmin,
   async (req, res) => {
-    try {
-      if (!mongoose.isValidObjectId(req.params.id)) {
-        return res.status(400).json({
-          success: false,
-          error: "Invalid order ID.",
-        });
-      }
-
-      const order = await Order.findOneAndUpdate(
-        {
-          _id: req.params.id,
-          status: "READY_FOR_DELIVERY",
-          paymentStatus: "CUSTOMER_MARKED_PAID",
-        },
-        {
-          $set: {
-            paymentStatus: "CONFIRMED",
-            paymentConfirmedAt: new Date(),
-            paymentConfirmedBy: req.user._id,
-          },
-        },
-        { new: true, runValidators: true }
-      );
-
-      if (!order) {
-        const existing = await Order.findById(req.params.id);
-
-        if (!existing) {
-          return res.status(404).json({
-            success: false,
-            error: "Order not found.",
-          });
-        }
-
-        return res.status(409).json({
-          success: false,
-          error:
-            existing.paymentStatus === "CONFIRMED"
-              ? "Payment is already confirmed."
-              : "Payment can only be confirmed after the customer submits it and the order is ready for delivery.",
-        });
-      }
-
-      await createNotification({
-        userId: order.customer,
-        title: "Payment confirmed",
-        message:
-          "Your payment has been confirmed. You can now mark your order as complete.",
-        type: "PAYMENT_CONFIRMED",
-        orderId: order._id,
-        data: {
-          paymentStatus: order.paymentStatus,
-          status: order.status,
-        },
-      }).catch((error) => {
-        console.error("Payment confirmation notification error:", error);
-      });
-
-      return res.json({
-        success: true,
-        message: "Payment confirmed.",
-        order,
-      });
-    } catch (error) {
-      console.error("Payment confirmation error:", error);
-
-      return res.status(500).json({
-        success: false,
-        error: "Failed to confirm payment.",
-      });
-    }
+    return res.status(410).json({
+      success: false,
+      error: "Manual payment confirmation is disabled. Only a verified M-Pesa callback can confirm payment.",
+    });
   }
 );
 
@@ -897,7 +754,7 @@ error: "Invalid order ID.",
     PENDING: ["ACCEPTED", "CANCELLED", "REJECTED"],
     ACCEPTED: ["SHOPPING", "CANCELLED"],
     SHOPPING: ["READY_FOR_DELIVERY", "CANCELLED"],
-    READY_FOR_DELIVERY: ["COMPLETED", "CANCELLED"],
+    READY_FOR_DELIVERY: ["CANCELLED"],
     COMPLETED: [],
     CANCELLED: [],
     REJECTED: [],
@@ -937,13 +794,54 @@ error: "Invalid order ID.",
     });
   }
 
-  // Compare-and-set: only update if the status has not changed
-  // since we checked its allowed transition.
+  if (status === "READY_FOR_DELIVERY") {
+    const validShoppingCost =
+      Number.isSafeInteger(existingOrder.shoppingCost) &&
+      existingOrder.shoppingCost >= 0;
+
+    const expectedTotal =
+      existingOrder.shoppingCost + existingOrder.deliveryFee;
+
+    const validTotal =
+      Number.isSafeInteger(existingOrder.deliveryFee) &&
+      existingOrder.deliveryFee >= 0 &&
+      Number.isSafeInteger(existingOrder.totalAmount) &&
+      existingOrder.totalAmount === expectedTotal;
+
+    if (!validShoppingCost || !validTotal) {
+      return res.status(409).json({
+        success: false,
+        error: "Enter and save the actual shopping cost before marking this order ready for delivery.",
+      });
+    }
+
+    if (
+      existingOrder.paymentStatus !== "UNPAID" ||
+      existingOrder.paymentRequestInProgress
+    ) {
+      return res.status(409).json({
+        success: false,
+        error: "This order has an active or completed payment. Refresh the order before changing its status.",
+      });
+    }
+  }
+
+  // Compare-and-set: prevent concurrent status or amount changes.
+  const statusUpdateFilter = {
+    _id: req.params.id,
+    status: previousStatus,
+  };
+
+  if (status === "READY_FOR_DELIVERY") {
+    statusUpdateFilter.shoppingCost = existingOrder.shoppingCost;
+    statusUpdateFilter.totalAmount = existingOrder.totalAmount;
+    statusUpdateFilter.deliveryFee = existingOrder.deliveryFee;
+    statusUpdateFilter.paymentStatus = "UNPAID";
+    statusUpdateFilter.paymentRequestInProgress = { $ne: true };
+  }
+
   const order = await Order.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      status: previousStatus,
-    },
+    statusUpdateFilter,
     {
       $set: { status },
     },
