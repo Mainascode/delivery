@@ -387,6 +387,9 @@ const canSubmitPayment =
       retrySeconds === 0
     )
   );
+  const canComplete =
+  status === "READY_FOR_DELIVERY" &&
+  paymentStatus === "CONFIRMED";
             return (
               <article className="order-card customer-order-card" key={id}>
                 <div className="order-card-top">
