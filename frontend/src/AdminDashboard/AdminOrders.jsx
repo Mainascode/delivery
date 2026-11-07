@@ -285,14 +285,12 @@ export default function AdminOrders() {
             const customer = order.customer || {};
             const actions = allowedActions[currentStatus] || [];
             const isUpdating = updatingId === id;
-                        const paymentStatus =
-              orderPayment?.payment?.status === "SUCCESS" ||
-              orderPayment?.paymentStatus === "CONFIRMED"
-                ? "CONFIRMED"
-                : orderPayment?.payment?.status ||
-                  orderPayment?.paymentStatus ||
-                  order.paymentStatus ||
-                  "UNPAID";
+
+const paymentStatus =
+  order.paymentStatus === "CONFIRMED"
+    ? "CONFIRMED"
+    : order.paymentStatus || "UNPAID";
+            
             const shoppingCost = Number(order.shoppingCost);
             const deliveryFee = Number(order.deliveryFee);
             const totalAmount = Number(order.totalAmount);
