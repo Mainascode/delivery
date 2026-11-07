@@ -343,10 +343,14 @@ export default function Orders() {
             const orderPayment = paymentInfo[id];
             const payment = orderPayment?.payment || {};
             const paymentStatus =
-              orderPayment?.paymentStatus ||
-              payment.status ||
-              order.paymentStatus ||
-              "UNPAID";
+  payment.status === "SUCCESS" ||
+  orderPayment?.paymentStatus === "CONFIRMED" ||
+  order.paymentStatus === "CONFIRMED"
+    ? "CONFIRMED"
+    : payment.status ||
+      orderPayment?.paymentStatus ||
+      order.paymentStatus ||
+      "UNPAID";
             const pending = status === "PENDING";
             const busy = busyId === id;
             const editing = editingId === id;
