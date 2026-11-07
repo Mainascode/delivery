@@ -364,17 +364,18 @@ router.get(
         success: true,
         paymentStatus: order.paymentStatus,
         totalAmount: order.totalAmount,
-        payment: payment
-          ? {
-              id: payment._id,
-              amount: payment.amount,
-              status: payment.status,
-              receiptNumber: payment.mpesaReceiptNumber,
-              resultDescription: payment.resultDescription,
-              createdAt: payment.createdAt,
-              completedAt: payment.completedAt,
-            }
-          : null,
+payment: payment
+  ? {
+      id: payment._id,
+      amount: payment.amount,
+      status: payment.status,
+      receiptNumber: payment.mpesaReceiptNumber,
+      resultDescription: payment.resultDescription,
+      initiatedAt: payment.initiatedAt || payment.createdAt,
+      createdAt: payment.createdAt,
+      completedAt: payment.completedAt,
+    }
+  : null,
       });
     } catch (error) {
       console.error("Payment status error:", error);

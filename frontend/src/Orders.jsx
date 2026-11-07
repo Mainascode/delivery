@@ -51,6 +51,7 @@ function money(value) {
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [paymentClock, setPaymentClock] = useState(Date.now());
   const [refreshing, setRefreshing] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
@@ -102,6 +103,14 @@ export default function Orders() {
       return null;
     }
   }, []);
+
+  useEffect(() => {
+  const timer = setInterval(() => {
+    setPaymentClock(Date.now());
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, []);
 
   useEffect(() => {
     loadOrders();
@@ -249,6 +258,7 @@ export default function Orders() {
     }
   }
 
+
   async function completeOrder(order) {
     const id = order._id || order.id;
     try {
@@ -338,11 +348,12 @@ export default function Orders() {
       ) : (
         <div className="orders-list">
           {orders.map((order) => {
+            
             const id = order._id || order.id;
             const status = order.status || "PENDING";
             const orderPayment = paymentInfo[id];
             const payment = orderPayment?.payment || {};
-            const paymentStatus =
+           const paymentStatus =
   payment.status === "SUCCESS" ||
   orderPayment?.paymentStatus === "CONFIRMED" ||
   order.paymentStatus === "CONFIRMED"
@@ -354,14 +365,28 @@ export default function Orders() {
             const pending = status === "PENDING";
             const busy = busyId === id;
             const editing = editingId === id;
-            const canSubmitPayment =
-              status === "READY_FOR_DELIVERY" &&
-              paymentStatus === "UNPAID" &&
-              !["PENDING", "INITIATED", "REVIEW_REQUIRED"].includes(payment.status);
-            const canComplete =
-              status === "READY_FOR_DELIVERY" &&
-              paymentStatus === "CONFIRMED";
+            const failedPayment = ["FAILED", "CANCELLED", "TIMEOUT"].includes(
+  paymentStatus
+);
 
+const retryAt = payment.initiatedAt
+  ? new Date(payment.initiatedAt).getTime() + 50000
+  : 0;
+
+const retrySeconds = retryAt
+  ? Math.max(0, Math.ceil((retryAt - paymentClock) / 1000))
+  : 0;
+
+const canSubmitPayment =
+  status === "READY_FOR_DELIVERY" &&
+  (
+    paymentStatus === "UNPAID" ||
+    (
+      failedPayment &&
+      retryAt > 0 &&
+      retrySeconds === 0
+    )
+  );
             return (
               <article className="order-card customer-order-card" key={id}>
                 <div className="order-card-top">
@@ -442,11 +467,14 @@ export default function Orders() {
                           enter your PIN if prompted. This page checks for updates.
                         </p>
                       )}
-                      {paymentStatus === "FAILED" && (
-                        <p className="customer-order-hint">
-                          The previous payment attempt failed. You can try again.
-                        </p>
-                      )}
+                      {failedPayment && (
+                       <p className="customer-order-hint">
+                        Your previous payment attempt failed.
+                         {retrySeconds > 0
+                          ? ` You can retry in ${retrySeconds} seconds.`
+                             : " You can try again now."}
+                           </p>
+                           )}
                     </div>
 
                     {canSubmitPayment && (
@@ -456,7 +484,7 @@ export default function Orders() {
                           <input
                             type="tel"
                             inputMode="tel"
-                            placeholder="07XXXXXXXX or 2547XXXXXXXX"
+                            placeholder="Enter number"
                             value={phoneNumbers[id] || ""}
                             onChange={(event) =>
                               setPhoneNumbers((current) => ({
