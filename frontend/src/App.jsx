@@ -17,6 +17,7 @@ import Register from "./Register";
 import Request from "./Request";
 import Orders from "./Orders";
 import Community from "./Community";
+import Help from "./Help";
 import Settings from "./Settings";
 
 
@@ -209,6 +210,14 @@ return ( <div className="app-shell">
         <span>Community</span>
       </NavLink>
 
+      <NavLink
+        to="/help"
+        className={({ isActive }) => isActive ? "active" : ""}
+      >
+        <span className="nav-symbol">?</span>
+        <span>Help & Support</span>
+      </NavLink>
+
       <span className="nav-section-label">
         ACCOUNT
       </span>
@@ -282,7 +291,7 @@ return ( <div className="app-shell">
 
   </main>
 
-  {/* MOBILE BOTTOM NAV */}
+
   <nav className="mobile-bottom-nav">
 
     <NavLink
@@ -324,6 +333,16 @@ return ( <div className="app-shell">
     >
       <span>⌂</span>
       <small>Community</small>
+    </NavLink>
+
+    <NavLink
+      to="/help"
+      className={({ isActive }) =>
+        isActive ? "active" : ""
+      }
+    >
+      <span>?</span>
+      <small>Help</small>
     </NavLink>
 
     <NavLink
@@ -769,6 +788,11 @@ return ( <Routes>
     <Route
       path="/signup"
       element={<Register />}
+    />
+
+    <Route
+      path="/help"
+      element={<Help />}
     />
 
     {/* CUSTOMER PROTECTED AREA */}
